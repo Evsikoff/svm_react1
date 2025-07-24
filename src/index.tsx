@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import axios from "axios";
 import "./index.css";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 interface InitResponse {
   userId: number;
