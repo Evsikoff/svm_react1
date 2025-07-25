@@ -281,8 +281,9 @@ const App: React.FC = () => {
     if (selectedMonsterId) {
       const loadImpacts = async () => {
         try {
-          const response = await axios.get<MonsterImpactsResponse>(
-            `https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj?monsterId=${selectedMonsterId}`
+          const response = await axios.post<MonsterImpactsResponse>(
+            "https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj",
+            { monsterId: selectedMonsterId }
           );
           setImpacts(response.data.monsterimpacts);
         } catch (err) {
