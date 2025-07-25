@@ -390,7 +390,9 @@ const App: React.FC = () => {
                 className="w-8 h-8"
               />
               <span>Энергия: {teachEnergy}</span>
-              <span>До пополнения: {formatTimer(timer)}</span>
+              {teachEnergy < 10 && (
+                <span>До пополнения: {formatTimer(timer)}</span>
+              )}
               <button className="bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed">
                 Пополнить энергию
               </button>
