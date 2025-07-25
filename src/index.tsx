@@ -57,6 +57,7 @@ interface MonsterImpact {
   name: string;
   comment: string;
   available: boolean;
+  energyprice: number;
 }
 
 interface MonsterImpactsResponse {
@@ -432,8 +433,8 @@ const App: React.FC = () => {
               {impacts.map((impact) => (
                 <div
                   key={impact.name}
-                  className={`relative bg-purple-50 p-0.5 shadow border border-gray-300 flex flex-col items-center justify-start ${
-                    impact.available
+                  className={`relative bg-purple-50 p-0.5 shadow border border-gray-300 flex flex-col items-center justify-between ${
+                    impact.available && teachEnergy >= impact.energyprice
                       ? "cursor-pointer hover:bg-purple-100 hover:shadow-md"
                       : "opacity-50 hover:opacity-70 hover:shadow-gray-400"
                   }`}
@@ -446,6 +447,16 @@ const App: React.FC = () => {
                   />
                   <div className="text-center text-purple-800 my-0">
                     {impact.name}
+                  </div>
+                  <div className="flex items-center justify-center mb-1">
+                    <img
+                      src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
+                      alt="Energy Price"
+                      className="w-[15px] h-[22px]" // 30% smaller than 8px
+                    />
+                    <span className="text-yellow-500 text-sm ml-1">
+                      {impact.energyprice}
+                    </span>
                   </div>
                 </div>
               ))}
