@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import axios from "axios";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import RaisingInteraction from "./RaisingInteraction";
 
 interface InitResponse {
   userId: number;
@@ -53,6 +54,7 @@ interface MonsterCharacteristicsResponse {
 }
 
 interface MonsterImpact {
+  id: number;
   image: string;
   name: string;
   comment: string;
@@ -67,6 +69,13 @@ interface MonsterImpactsResponse {
 interface MonsterRoomResponse {
   monsterimage: string;
   roomimage: string;
+}
+
+interface ImpactResponse {
+  errortext: string;
+  video?: string;
+  text?: string;
+  characteristicschanges?: { name: string; amount: number }[];
 }
 
 const App: React.FC = () => {
@@ -90,8 +99,14 @@ const App: React.FC = () => {
   const [roomImage, setRoomImage] = useState<string>("");
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [showRaisingInteraction, setShowRaisingInteraction] =
+    useState<boolean>(false);
+  const [interactionData, setInteractionData] = useState<ImpactResponse | null>(
+    null
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(false); // Новое состояние для спиннера
 
-  // Initialize application
+  // Инициализация приложения
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -113,7 +128,7 @@ const App: React.FC = () => {
     initApp();
   }, []);
 
-  // Load main menu
+  // Загрузка главного меню
   useEffect(() => {
     if (monstersId.length > 0) {
       const loadMainMenu = async () => {
@@ -141,7 +156,7 @@ const App: React.FC = () => {
     }
   }, [monstersId]);
 
-  // Load notifications
+  // Загрузка уведомлений
   useEffect(() => {
     if (userId) {
       const loadNotifications = async () => {
@@ -158,7 +173,7 @@ const App: React.FC = () => {
     }
   }, [userId]);
 
-  // Load monsters
+  // Загрузка монстров
   useEffect(() => {
     if (monstersId.length > 0) {
       const loadMonsters = async () => {
@@ -185,26 +200,26 @@ const App: React.FC = () => {
     }
   }, [monstersId]);
 
-  // Load teach energy
-  useEffect(() => {
-    if (userId) {
-      const loadTeachEnergy = async () => {
-        try {
-          const response = await axios.post<TeachEnergyResponse>(
-            "https://functions.yandexcloud.net/d4ek0gg34e57hosr45u8",
-            { userId }
-          );
-          setTeachEnergy(response.data.teachenergy);
-          setNextReplenishment(response.data.nextfreereplenishment);
-        } catch (err) {
-          setError("Ошибка при загрузке энергии");
-        }
-      };
-      loadTeachEnergy();
+  // Загрузка энергии
+  const loadTeachEnergy = async () => {
+    if (!userId) return;
+    try {
+      const response = await axios.post<TeachEnergyResponse>(
+        "https://functions.yandexcloud.net/d4ek0gg34e57hosr45u8",
+        { userId }
+      );
+      setTeachEnergy(response.data.teachenergy);
+      setNextReplenishment(response.data.nextfreereplenishment);
+    } catch (err) {
+      setError("Ошибка при загрузке энергии");
     }
+  };
+
+  useEffect(() => {
+    loadTeachEnergy();
   }, [userId]);
 
-  // Timer for energy replenishment
+  // Таймер для пополнения энергии
   useEffect(() => {
     if (nextReplenishment) {
       const targetTime = new Date(nextReplenishment).getTime();
@@ -213,19 +228,6 @@ const App: React.FC = () => {
         const timeLeft = Math.max(0, Math.floor((targetTime - now) / 1000));
         setTimer(timeLeft);
         if (timeLeft <= 0) {
-          // Reload teach energy
-          const loadTeachEnergy = async () => {
-            try {
-              const response = await axios.post<TeachEnergyResponse>(
-                "https://functions.yandexcloud.net/d4ek0gg34e57hosr45u8",
-                { userId }
-              );
-              setTeachEnergy(response.data.teachenergy);
-              setNextReplenishment(response.data.nextfreereplenishment);
-            } catch (err) {
-              setError("Ошибка при обновлении энергии");
-            }
-          };
           loadTeachEnergy();
         }
       };
@@ -234,68 +236,102 @@ const App: React.FC = () => {
     }
   }, [nextReplenishment, userId]);
 
-  // Load monster characteristics
-  useEffect(() => {
-    if (selectedMonsterId) {
-      const loadCharacteristics = async () => {
-        try {
-          const response = await axios.post<MonsterCharacteristicsResponse>(
-            "https://functions.yandexcloud.net/d4eja3aglipp5f8hfb73",
-            { monsterId: selectedMonsterId }
-          );
-          setCharacteristics(response.data.monstercharacteristics);
-        } catch (err) {
-          setError("Ошибка при загрузке характеристик монстра");
-        }
-      };
-      loadCharacteristics();
+  // Загрузка характеристик монстра
+  const loadCharacteristics = async () => {
+    if (!selectedMonsterId) return;
+    try {
+      const response = await axios.post<MonsterCharacteristicsResponse>(
+        "https://functions.yandexcloud.net/d4eja3aglipp5f8hfb73",
+        { monsterId: selectedMonsterId }
+      );
+      setCharacteristics(response.data.monstercharacteristics);
+    } catch (err) {
+      setError("Ошибка при загрузке характеристик монстра");
     }
+  };
+
+  useEffect(() => {
+    loadCharacteristics();
   }, [selectedMonsterId]);
 
-  // Load monster and room image
-  useEffect(() => {
-    if (selectedMonsterId && characteristics.length > 0) {
-      const loadMonsterRoom = async () => {
-        try {
-          const response = await axios.post<MonsterRoomResponse>(
-            "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
-            {
-              monsterId: selectedMonsterId,
-              monstercharacteristics: characteristics.map((c) => ({
-                id: c.id,
-                value: c.value,
-              })),
-            }
-          );
-          setMonsterImage(response.data.monsterimage);
-          setRoomImage(response.data.roomimage);
-        } catch (err) {
-          setError("Ошибка при загрузке изображений монстра и комнаты");
+  // Загрузка изображений монстра и комнаты
+  const loadMonsterRoom = async () => {
+    if (!selectedMonsterId || characteristics.length === 0) return;
+    try {
+      const response = await axios.post<MonsterRoomResponse>(
+        "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
+        {
+          monsterId: selectedMonsterId,
+          monstercharacteristics: characteristics.map((c) => ({
+            id: c.id,
+            value: c.value,
+          })),
         }
-      };
-      loadMonsterRoom();
+      );
+      setMonsterImage(response.data.monsterimage);
+      setRoomImage(response.data.roomimage);
+    } catch (err) {
+      setError("Ошибка при загрузке изображений монстра и комнаты");
     }
+  };
+
+  useEffect(() => {
+    loadMonsterRoom();
   }, [selectedMonsterId, characteristics]);
 
-  // Load monster impacts
-  useEffect(() => {
-    if (selectedMonsterId) {
-      const loadImpacts = async () => {
-        try {
-          const response = await axios.post<MonsterImpactsResponse>(
-            "https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj",
-            { monsterId: selectedMonsterId }
-          );
-          setImpacts(response.data.monsterimpacts);
-        } catch (err) {
-          setError("Ошибка при загрузке взаимодействий");
-        }
-      };
-      loadImpacts();
+  // Загрузка взаимодействий
+  const loadImpacts = async () => {
+    if (!selectedMonsterId) return;
+    try {
+      const response = await axios.post<MonsterImpactsResponse>(
+        "https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj",
+        { monsterId: selectedMonsterId }
+      );
+      setImpacts(response.data.monsterimpacts);
+    } catch (err) {
+      setError("Ошибка при загрузке взаимодействий");
     }
+  };
+
+  useEffect(() => {
+    loadImpacts();
   }, [selectedMonsterId]);
 
-  // Format timer to "X часов Y минут Z секунд"
+  // Обработчик клика по взаимодействию
+  const handleImpactClick = async (impact: MonsterImpact) => {
+    if (
+      !impact.available ||
+      teachEnergy < impact.energyprice ||
+      !userId ||
+      !selectedMonsterId
+    ) {
+      return;
+    }
+    setIsLoading(true); // Включаем спиннер
+    try {
+      const response = await axios.post<ImpactResponse>(
+        "https://functions.yandexcloud.net/d4een4tv1fhjs9o05ogj",
+        {
+          monsterId: selectedMonsterId,
+          impactId: impact.id,
+          userId: userId,
+        }
+      );
+      if (response.data.errortext) {
+        setError(response.data.errortext);
+      } else {
+        setInteractionData(response.data);
+        setShowRaisingInteraction(true);
+        await Promise.all([loadTeachEnergy(), loadCharacteristics()]);
+      }
+    } catch (err) {
+      setError("Ошибка при выполнении взаимодействия");
+    } finally {
+      setIsLoading(false); // Выключаем спиннер
+    }
+  };
+
+  // Форматирование таймера
   const formatTimer = (timeInSeconds: number): string => {
     const hours = Math.floor(timeInSeconds / 3600);
     const minutes = Math.floor((timeInSeconds % 3600) / 60);
@@ -309,18 +345,60 @@ const App: React.FC = () => {
     return parts.join(" ");
   };
 
-  if (error) {
-    return <div className="text-red-500 text-center mt-4">{error}</div>;
-  }
+  // Закрытие диалогового окна с ошибкой
+  const closeError = () => {
+    setError("");
+  };
+
+  // Закрытие блока "Воспитательное взаимодействие" с обновлением фреймов
+  const closeRaisingInteraction = async () => {
+    setIsLoading(true); // Включаем спиннер
+    try {
+      await Promise.all([
+        loadTeachEnergy(),
+        loadCharacteristics(),
+        loadMonsterRoom(),
+        loadImpacts(),
+      ]);
+    } catch (err) {
+      setError("Ошибка при обновлении данных");
+    } finally {
+      setIsLoading(false); // Выключаем спиннер
+      setShowRaisingInteraction(false);
+      setInteractionData(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
-      {/* App Title */}
+      {/* Спиннер */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
+
+      {/* Диалоговое окно ошибки */}
+      {error && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg">
+            <div className="text-red-500 text-center mb-4">{error}</div>
+            <button
+              onClick={closeError}
+              className="bg-purple-500 text-white px-4 py-2 rounded"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Заголовок приложения */}
       <div className="bg-gradient-to-r from-purple-500 to-orange-500 text-white text-4xl font-handwritten text-center py-4">
         СИМУЛЯТОР ВОСПИТАНИЯ МОНСТРОВ
       </div>
 
-      {/* Main Menu */}
+      {/* Главное меню */}
       <div className="flex items-center bg-purple-600 text-white p-4">
         <div className="flex space-x-4">
           {menuItems.map((item) => (
@@ -336,7 +414,7 @@ const App: React.FC = () => {
             </div>
           ))}
         </div>
-        {/* Notification Frame */}
+        {/* Фрейм уведомлений */}
         <div className="ml-auto relative">
           <img
             src="https://storage.yandexcloud.net/svm/img/bell.png"
@@ -352,16 +430,26 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Notifications Block */}
+      {/* Блок уведомлений */}
       {showNotifications && (
         <div className="bg-orange-100 p-4 shadow-md">Оповещения</div>
       )}
 
-      {/* Raising Block */}
-      {selectedMenuItem && (
+      {/* Блок "Воспитательное взаимодействие" */}
+      {showRaisingInteraction && interactionData && (
+        <RaisingInteraction
+          videoUrl={interactionData.video || ""}
+          text={interactionData.text || ""}
+          characteristicsChanges={interactionData.characteristicschanges || []}
+          onClose={closeRaisingInteraction}
+        />
+      )}
+
+      {/* Блок "Воспитание" */}
+      {!showRaisingInteraction && selectedMenuItem && (
         <div className="p-4">
           <div className="flex justify-between">
-            {/* Monster Switcher Frame */}
+            {/* Фрейм переключателя монстров */}
             <div className="flex space-x-1">
               {monsters.map((monster, index) => (
                 <div
@@ -384,7 +472,7 @@ const App: React.FC = () => {
                 </div>
               ))}
             </div>
-            {/* Teach Energy Frame */}
+            {/* Фрейм энергии */}
             <div className="flex items-center space-x-2 border border-gray-300 p-2 bg-purple-50">
               <img
                 src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
@@ -401,7 +489,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex mt-4 space-x-1">
-            {/* Monster and Room Image Frame */}
+            {/* Фрейм изображений монстра и комнаты */}
             <div className="w-1/2 border border-gray-300 bg-orange-100">
               {roomImage && monsterImage && (
                 <div className="relative">
@@ -413,7 +501,7 @@ const App: React.FC = () => {
                   />
                 </div>
               )}
-              {/* Monster Characteristics Frame */}
+              {/* Фрейм характеристик монстра */}
               <div className="mt-4 space-y-2 p-2">
                 {characteristics.map((char) => (
                   <div
@@ -428,7 +516,7 @@ const App: React.FC = () => {
                 ))}
               </div>
             </div>
-            {/* Monster Impacts Frame */}
+            {/* Фрейм взаимодействий */}
             <div className="w-1/2 grid grid-cols-4 gap-1 bg-purple-200">
               {impacts.map((impact) => (
                 <div
@@ -439,6 +527,7 @@ const App: React.FC = () => {
                       : "opacity-50 hover:opacity-70 hover:shadow-gray-400"
                   }`}
                   title={impact.comment}
+                  onClick={() => handleImpactClick(impact)}
                 >
                   <img
                     src={impact.image}
@@ -452,7 +541,7 @@ const App: React.FC = () => {
                     <img
                       src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
                       alt="Energy Price"
-                      className="w-[15px] h-[22px]" // 30% smaller than 8px
+                      className="w-[15px] h-[22px]"
                     />
                     <span className="text-yellow-500 text-sm ml-1">
                       {impact.energyprice}
@@ -470,5 +559,5 @@ const App: React.FC = () => {
 
 import { createRoot } from "react-dom/client";
 
-const root = createRoot(document.getElementById("root")!); // ! для TypeScript, чтобы указать, что элемент не null
+const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
