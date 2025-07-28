@@ -104,9 +104,8 @@ const App: React.FC = () => {
   const [interactionData, setInteractionData] = useState<ImpactResponse | null>(
     null
   );
-  const [isLoading, setIsLoading] = useState<boolean>(false); // Новое состояние для спиннера
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Инициализация приложения
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -128,7 +127,6 @@ const App: React.FC = () => {
     initApp();
   }, []);
 
-  // Загрузка главного меню
   useEffect(() => {
     if (monstersId.length > 0) {
       const loadMainMenu = async () => {
@@ -156,7 +154,6 @@ const App: React.FC = () => {
     }
   }, [monstersId]);
 
-  // Загрузка уведомлений
   useEffect(() => {
     if (userId) {
       const loadNotifications = async () => {
@@ -173,7 +170,6 @@ const App: React.FC = () => {
     }
   }, [userId]);
 
-  // Загрузка монстров
   useEffect(() => {
     if (monstersId.length > 0) {
       const loadMonsters = async () => {
@@ -200,7 +196,6 @@ const App: React.FC = () => {
     }
   }, [monstersId]);
 
-  // Загрузка энергии
   const loadTeachEnergy = async () => {
     if (!userId) return;
     try {
@@ -219,7 +214,6 @@ const App: React.FC = () => {
     loadTeachEnergy();
   }, [userId]);
 
-  // Таймер для пополнения энергии
   useEffect(() => {
     if (nextReplenishment) {
       const targetTime = new Date(nextReplenishment).getTime();
@@ -236,7 +230,6 @@ const App: React.FC = () => {
     }
   }, [nextReplenishment, userId]);
 
-  // Загрузка характеристик монстра
   const loadCharacteristics = async () => {
     if (!selectedMonsterId) return;
     try {
@@ -254,7 +247,6 @@ const App: React.FC = () => {
     loadCharacteristics();
   }, [selectedMonsterId]);
 
-  // Загрузка изображений монстра и комнаты
   const loadMonsterRoom = async () => {
     if (!selectedMonsterId || characteristics.length === 0) return;
     try {
@@ -279,7 +271,6 @@ const App: React.FC = () => {
     loadMonsterRoom();
   }, [selectedMonsterId, characteristics]);
 
-  // Загрузка взаимодействий
   const loadImpacts = async () => {
     if (!selectedMonsterId) return;
     try {
@@ -297,7 +288,6 @@ const App: React.FC = () => {
     loadImpacts();
   }, [selectedMonsterId]);
 
-  // Обработчик клика по взаимодействию
   const handleImpactClick = async (impact: MonsterImpact) => {
     if (
       !impact.available ||
@@ -307,7 +297,7 @@ const App: React.FC = () => {
     ) {
       return;
     }
-    setIsLoading(true); // Включаем спиннер
+    setIsLoading(true);
     try {
       const response = await axios.post<ImpactResponse>(
         "https://functions.yandexcloud.net/d4een4tv1fhjs9o05ogj",
@@ -327,11 +317,10 @@ const App: React.FC = () => {
     } catch (err) {
       setError("Ошибка при выполнении взаимодействия");
     } finally {
-      setIsLoading(false); // Выключаем спиннер
+      setIsLoading(false);
     }
   };
 
-  // Форматирование таймера
   const formatTimer = (timeInSeconds: number): string => {
     const hours = Math.floor(timeInSeconds / 3600);
     const minutes = Math.floor((timeInSeconds % 3600) / 60);
@@ -345,14 +334,12 @@ const App: React.FC = () => {
     return parts.join(" ");
   };
 
-  // Закрытие диалогового окна с ошибкой
   const closeError = () => {
     setError("");
   };
 
-  // Закрытие блока "Воспитательное взаимодействие" с обновлением фреймов
   const closeRaisingInteraction = async () => {
-    setIsLoading(true); // Включаем спиннер
+    setIsLoading(true);
     try {
       await Promise.all([
         loadTeachEnergy(),
@@ -363,7 +350,7 @@ const App: React.FC = () => {
     } catch (err) {
       setError("Ошибка при обновлении данных");
     } finally {
-      setIsLoading(false); // Выключаем спиннер
+      setIsLoading(false);
       setShowRaisingInteraction(false);
       setInteractionData(null);
     }
@@ -371,14 +358,12 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
-      {/* Спиннер */}
       {isLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
 
-      {/* Диалоговое окно ошибки */}
       {error && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded shadow-lg">
@@ -393,12 +378,10 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Заголовок приложения */}
       <div className="bg-gradient-to-r from-purple-500 to-orange-500 text-white text-4xl font-handwritten text-center py-4">
         СИМУЛЯТОР ВОСПИТАНИЯ МОНСТРОВ
       </div>
 
-      {/* Главное меню */}
       <div className="flex items-center bg-purple-600 text-white p-4">
         <div className="flex space-x-4">
           {menuItems.map((item) => (
@@ -414,7 +397,6 @@ const App: React.FC = () => {
             </div>
           ))}
         </div>
-        {/* Фрейм уведомлений */}
         <div className="ml-auto relative">
           <img
             src="https://storage.yandexcloud.net/svm/img/bell.png"
@@ -430,12 +412,10 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Блок уведомлений */}
       {showNotifications && (
         <div className="bg-orange-100 p-4 shadow-md">Оповещения</div>
       )}
 
-      {/* Блок "Воспитательное взаимодействие" */}
       {showRaisingInteraction && interactionData && (
         <RaisingInteraction
           videoUrl={interactionData.video || ""}
@@ -445,11 +425,9 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Блок "Воспитание" */}
       {!showRaisingInteraction && selectedMenuItem && (
         <div className="p-4">
           <div className="flex justify-between">
-            {/* Фрейм переключателя монстров */}
             <div className="flex space-x-1">
               {monsters.map((monster, index) => (
                 <div
@@ -472,7 +450,6 @@ const App: React.FC = () => {
                 </div>
               ))}
             </div>
-            {/* Фрейм энергии */}
             <div className="flex items-center space-x-2 border border-gray-300 p-2 bg-purple-50">
               <img
                 src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
@@ -488,9 +465,8 @@ const App: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="flex mt-4 space-x-1">
-            {/* Фрейм изображений монстра и комнаты */}
-            <div className="w-1/2 border border-gray-300 bg-orange-100">
+          <div className="mt-4 flex flex-col md:flex-row md:space-x-1">
+            <div className="w-full md:w-1/2 border border-gray-300 bg-orange-100">
               {roomImage && monsterImage && (
                 <div className="relative">
                   <img src={roomImage} alt="Room" className="w-full" />
@@ -501,7 +477,6 @@ const App: React.FC = () => {
                   />
                 </div>
               )}
-              {/* Фрейм характеристик монстра */}
               <div className="mt-4 space-y-2 p-2">
                 {characteristics.map((char) => (
                   <div
@@ -516,8 +491,7 @@ const App: React.FC = () => {
                 ))}
               </div>
             </div>
-            {/* Фрейм взаимодействий */}
-            <div className="w-1/2 grid grid-cols-4 gap-1 bg-purple-200">
+            <div className="w-full md:w-1/2 mt-4 md:mt-0 grid grid-cols-4 gap-1 bg-purple-200">
               {impacts.map((impact) => (
                 <div
                   key={impact.name}
