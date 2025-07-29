@@ -60,6 +60,7 @@ interface MonsterImpact {
   comment: string;
   available: boolean;
   energyprice: number;
+  minendurance?: number; // Добавлено поле minendurance
 }
 
 interface MonsterImpactsResponse {
@@ -105,6 +106,8 @@ const App: React.FC = () => {
     null
   );
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  // Добавлено состояние для хранения иконки minendurance
+  const [enduranceIcon, setEnduranceIcon] = useState<string>("");
 
   useEffect(() => {
     const initApp = async () => {
@@ -238,6 +241,13 @@ const App: React.FC = () => {
         { monsterId: selectedMonsterId }
       );
       setCharacteristics(response.data.monstercharacteristics);
+      // Поиск иконки для minendurance (id=10012)
+      const enduranceChar = response.data.monstercharacteristics.find(
+        (char) => char.id === 10012
+      );
+      if (enduranceChar) {
+        setEnduranceIcon(enduranceChar.icon);
+      }
     } catch (err) {
       setError("Ошибка при загрузке характеристик монстра");
     }
@@ -511,15 +521,32 @@ const App: React.FC = () => {
                   <div className="text-center text-purple-800 my-0">
                     {impact.name}
                   </div>
-                  <div className="flex items-center justify-center mb-1">
-                    <img
-                      src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
-                      alt="Energy Price"
-                      className="w-[15px] h-[22px]"
-                    />
-                    <span className="text-yellow-500 text-sm ml-1">
-                      {impact.energyprice}
-                    </span>
+                  <div className="flex items-center justify-center mb-1 space-x-2">
+                    {/* Отображение minendurance, если значение не 0 и не null */}
+                    {impact.minendurance !== undefined &&
+                      impact.minendurance !== null &&
+                      impact.minendurance !== 0 && (
+                        <div className="flex items-center">
+                          <img
+                            src={enduranceIcon}
+                            alt="Min Endurance"
+                            className="w-[15px] h-[22px]"
+                          />
+                          <span className="text-green-700 text-sm ml-1">
+                            {impact.minendurance}
+                          </span>
+                        </div>
+                      )}
+                    <div className="flex items-center">
+                      <img
+                        src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
+                        alt="Energy Price"
+                        className="w-[15px] h-[22px]"
+                      />
+                      <span className="text-yellow-500 text-sm ml-1">
+                        {impact.energyprice}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
