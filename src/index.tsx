@@ -60,7 +60,7 @@ interface MonsterImpact {
   comment: string;
   available: boolean;
   energyprice: number;
-  minendurance?: number; // Добавлено поле minendurance
+  minendurance?: number;
 }
 
 interface MonsterImpactsResponse {
@@ -106,7 +106,6 @@ const App: React.FC = () => {
     null
   );
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  // Добавлено состояние для хранения иконки minendurance
   const [enduranceIcon, setEnduranceIcon] = useState<string>("");
 
   useEffect(() => {
@@ -241,7 +240,6 @@ const App: React.FC = () => {
         { monsterId: selectedMonsterId }
       );
       setCharacteristics(response.data.monstercharacteristics);
-      // Поиск иконки для minendurance (id=10012)
       const enduranceChar = response.data.monstercharacteristics.find(
         (char) => char.id === 10012
       );
@@ -488,17 +486,24 @@ const App: React.FC = () => {
                 </div>
               )}
               <div className="mt-4 space-y-2 p-2">
-                {characteristics.map((char) => (
-                  <div
-                    key={char.id}
-                    className="flex items-center space-x-2 bg-purple-100 p-2 shadow border border-gray-300"
-                  >
-                    <img src={char.icon} alt={char.name} className="w-8 h-8" />
-                    <span className="text-purple-700 font-semibold">
-                      {char.name}: {char.value}
-                    </span>
-                  </div>
-                ))}
+                {characteristics
+                  .slice()
+                  .sort((a, b) => b.value - a.value)
+                  .map((char) => (
+                    <div
+                      key={char.id}
+                      className="flex items-center space-x-2 bg-purple-100 p-2 shadow border border-gray-300"
+                    >
+                      <img
+                        src={char.icon}
+                        alt={char.name}
+                        className="w-8 h-8"
+                      />
+                      <span className="text-purple-700 font-semibold">
+                        {char.name}: {char.value}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
             <div className="w-full md:w-1/2 mt-4 md:mt-0 grid grid-cols-4 gap-1 bg-purple-200">
@@ -522,7 +527,6 @@ const App: React.FC = () => {
                     {impact.name}
                   </div>
                   <div className="flex items-center justify-center mb-1 space-x-2">
-                    {/* Отображение minendurance, если значение не 0 и не null */}
                     {impact.minendurance !== undefined &&
                       impact.minendurance !== null &&
                       impact.minendurance !== 0 && (
