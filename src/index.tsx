@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react"; // Убедитесь, что useMemo импортирован
 import ReactDOM from "react-dom";
 import axios from "axios";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import RaisingInteraction from "./RaisingInteraction";
 
+// ... (все интерфейсы до App: React.FC остаются без изменений)
 interface InitResponse {
   userId: number;
   monstersId: number[];
@@ -67,9 +68,30 @@ interface MonsterImpactsResponse {
   monsterimpacts: MonsterImpact[];
 }
 
+interface RoomItem {
+  id: number;
+  name: string;
+  spriteUrl: string;
+  placement:
+    | "ceiling_above_the_bed"
+    | "shelf_2"
+    | "shelf_1"
+    | "floor_is_on_the_righ"
+    | "floor_is_on_the_left"
+    | "shelf_3"
+    | "shelf_6"
+    | "shelf_10"
+    | "shelf_9"
+    | "left_side_of_the_room"
+    | "table"
+    | "board"
+    | "shelf 5";
+}
+
 interface MonsterRoomResponse {
   monsterimage: string;
   roomimage: string;
+  roomitems: RoomItem[];
 }
 
 interface ImpactResponse {
@@ -79,7 +101,13 @@ interface ImpactResponse {
   characteristicschanges?: { name: string; amount: number }[];
 }
 
+// ИЗМЕНЕНИЕ 1: Добавим новый интерфейс для удобства
+interface StyledRoomItem extends RoomItem {
+  style: React.CSSProperties;
+}
+
 const App: React.FC = () => {
+  // ... (все хуки useState, useEffect и функции до placementZones остаются без изменений)
   const [userId, setUserId] = useState<number | null>(null);
   const [monstersId, setMonstersId] = useState<number[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -98,6 +126,7 @@ const App: React.FC = () => {
   const [impacts, setImpacts] = useState<MonsterImpact[]>([]);
   const [monsterImage, setMonsterImage] = useState<string>("");
   const [roomImage, setRoomImage] = useState<string>("");
+  const [roomItems, setRoomItems] = useState<RoomItem[]>([]);
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [showRaisingInteraction, setShowRaisingInteraction] =
@@ -270,6 +299,7 @@ const App: React.FC = () => {
       );
       setMonsterImage(response.data.monsterimage);
       setRoomImage(response.data.roomimage);
+      setRoomItems(response.data.roomitems || []);
     } catch (err) {
       setError("Ошибка при загрузке изображений монстра и комнаты");
     }
@@ -363,6 +393,125 @@ const App: React.FC = () => {
       setInteractionData(null);
     }
   };
+
+  const placementZones: { [key: string]: React.CSSProperties } = {
+    ceiling_above_the_bed: {
+      top: "10%",
+      left: "50%",
+      width: "60%",
+      height: "20%",
+    },
+    shelf_1: {
+      top: "8.90%",
+      left: "7.62%",
+      width: "11.20%",
+      height: "11.13%",
+    },
+    shelf_2: {
+      top: "10.91%",
+      left: "19.79%",
+      width: "11.07%",
+      height: "11.33%",
+    },
+    shelf_3: {
+      top: "21.56%",
+      left: "8.01%",
+      width: "10.81%",
+      height: "36.04%",
+    },
+    shelf_5: {
+      top: "61.11%",
+      left: "7.94%",
+      width: "11.26%",
+      height: "5.37%",
+    },
+    shelf_6: {
+      top: "56.71%",
+      left: "20.12%",
+      width: "10.55%",
+      height: "7.62%",
+    },
+    shelf_9: {
+      top: "30.64%",
+      left: "30.60%",
+      width: "13.15%",
+      height: "9.86%",
+    },
+    shelf_10: {
+      top: "40.89%",
+      left: "32.49%",
+      width: "11.33%",
+      height: "7.32%",
+    },
+    floor_is_on_the_right: {
+      top: "86.05%",
+      left: "89.78%",
+      width: "9.57%",
+      height: "12.99%",
+    },
+    floor_is_on_the_left: {
+      top: "87.61%",
+      left: "3.26%",
+      width: "43.42%",
+      height: "11.91%",
+    },
+    left_side_of_the_room: {
+      top: "4.99%",
+      left: "0.91%",
+      width: "5.14%",
+      height: "93.26%",
+    },
+    table: {
+      top: "37.51%",
+      left: "71.68%",
+      width: "24.15%",
+      height: "14.26%",
+    },
+    board: {
+      top: "37.51%",
+      left: "71.68%",
+      width: "24.15%",
+      height: "14.26%",
+    },
+  };
+
+  // ИЗМЕНЕНИЕ 2: Обновляем useMemo с использованием Type Guard
+  const memoizedItemsWithStyles = useMemo((): StyledRoomItem[] => {
+    return roomItems
+      .map((item): StyledRoomItem | null => {
+        const zoneStyle = placementZones[item.placement];
+        if (!zoneStyle) {
+          console.warn(`Нет стиля для зоны размещения: ${item.placement}`);
+          return null;
+        }
+
+        const topBase = parseFloat(zoneStyle.top as string);
+        const leftBase = parseFloat(zoneStyle.left as string);
+        const heightBase = parseFloat(zoneStyle.height as string);
+        const widthBase = parseFloat(zoneStyle.width as string);
+
+        // Ограничиваем случайные смещения, чтобы предметы оставались в зоне
+        const maxOffsetX = widthBase * 0.8; // 80% от ширины зоны
+        const maxOffsetY = heightBase * 0.8; // 80% от высоты зоны
+        const randomTopOffset = Math.random() * maxOffsetY;
+        const randomLeftOffset = Math.random() * maxOffsetX;
+
+        const finalTop = topBase + randomTopOffset;
+        const finalLeft = leftBase + randomLeftOffset;
+
+        const itemStyle: React.CSSProperties = {
+          position: "absolute",
+          top: `${finalTop}%`,
+          left: `${finalLeft}%`,
+          width: "10%", // Можно настроить размер предметов
+          transform: "translate(-50%, -50%)", // Центрируем предмет относительно его позиции
+          zIndex: 5, // Предметы выше фона (zIndex: 1), но ниже монстра (zIndex: 10)
+        };
+
+        return { ...item, style: itemStyle };
+      })
+      .filter((item): item is StyledRoomItem => item !== null);
+  }, [roomItems]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
@@ -476,15 +625,69 @@ const App: React.FC = () => {
           <div className="mt-4 flex flex-col md:flex-row md:space-x-1">
             <div className="w-full md:w-1/2 border border-gray-300 bg-orange-100">
               {roomImage && monsterImage && (
-                <div className="relative">
-                  <img src={roomImage} alt="Room" className="w-full" />
+                <div
+                  className="relative aspect-[4/3]"
+                  style={{ position: "relative", width: "100%" }}
+                >
+                  {/* Фон - комната */}
+                  <img
+                    src={roomImage}
+                    alt="Room"
+                    className="w-full h-full object-cover"
+                    style={{ zIndex: 1 }}
+                  />
+
+                  {/* --- Новый рендер зон --- */}
+                  {Object.entries(placementZones).map(
+                    ([zoneName, zoneStyle]) => {
+                      const itemsInZone = roomItems.filter(
+                        (item) => item.placement === zoneName
+                      );
+                      if (itemsInZone.length === 0) return null;
+                      return (
+                        <div
+                          key={zoneName}
+                          style={{
+                            ...zoneStyle,
+                            position: "absolute",
+                            display: "flex",
+                            flexDirection: "row",
+                            alignItems: "flex-end",
+                            justifyContent: "flex-start",
+                            pointerEvents: "none",
+                            zIndex: 5,
+                          }}
+                        >
+                          {itemsInZone.map((item, idx) => (
+                            <img
+                              key={item.id}
+                              src={item.spriteUrl}
+                              alt={item.name}
+                              title={item.name}
+                              style={{
+                                width: "72%", // увеличено на 80% (40% × 1.8)
+                                maxWidth: "108px", // было 60px
+                                marginLeft: idx === 0 ? 0 : "4%",
+                                objectFit: "contain",
+                                pointerEvents: "auto",
+                              }}
+                            />
+                          ))}
+                        </div>
+                      );
+                    }
+                  )}
+
+                  {/* Монстр */}
                   <img
                     src={monsterImage}
                     alt="Monster"
                     className="absolute bottom-[10%] left-1/2 w-1/2 transform -translate-x-1/2"
+                    style={{ zIndex: 10 }}
                   />
                 </div>
               )}
+
               <div className="mt-4 space-y-2 p-2">
                 {characteristics
                   .slice()
