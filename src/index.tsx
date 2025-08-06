@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react"; // Убедитесь, что useMemo импортирован
+import React, { useState, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import axios from "axios";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import RaisingInteraction from "./RaisingInteraction";
 
-// ... (все интерфейсы до App: React.FC остаются без изменений)
 interface InitResponse {
   userId: number;
   monstersId: number[];
@@ -85,7 +84,7 @@ interface RoomItem {
     | "left_side_of_the_room"
     | "table"
     | "board"
-    | "shelf 5";
+    | "shelf_5";
 }
 
 interface MonsterRoomResponse {
@@ -94,20 +93,31 @@ interface MonsterRoomResponse {
   roomitems: RoomItem[];
 }
 
+interface InventoryItem {
+  inventoryid: number;
+  inventoryname: string;
+  inventoryimage: string;
+  inventorydescription: string;
+  quantity: number;
+}
+
 interface ImpactResponse {
   errortext: string;
   video?: string;
   text?: string;
-  characteristicschanges?: { name: string; amount: number }[];
+  characteristicschanges?: {
+    characteristicsid: number;
+    name: string;
+    amount: number;
+  }[];
+  inventoryitems?: InventoryItem[];
 }
 
-// ИЗМЕНЕНИЕ 1: Добавим новый интерфейс для удобства
 interface StyledRoomItem extends RoomItem {
   style: React.CSSProperties;
 }
 
 const App: React.FC = () => {
-  // ... (все хуки useState, useEffect и функции до placementZones остаются без изменений)
   const [userId, setUserId] = useState<number | null>(null);
   const [monstersId, setMonstersId] = useState<number[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -475,7 +485,6 @@ const App: React.FC = () => {
     },
   };
 
-  // ИЗМЕНЕНИЕ 2: Обновляем useMemo с использованием Type Guard
   const memoizedItemsWithStyles = useMemo((): StyledRoomItem[] => {
     return roomItems
       .map((item): StyledRoomItem | null => {
@@ -490,9 +499,8 @@ const App: React.FC = () => {
         const heightBase = parseFloat(zoneStyle.height as string);
         const widthBase = parseFloat(zoneStyle.width as string);
 
-        // Ограничиваем случайные смещения, чтобы предметы оставались в зоне
-        const maxOffsetX = widthBase * 0.8; // 80% от ширины зоны
-        const maxOffsetY = heightBase * 0.8; // 80% от высоты зоны
+        const maxOffsetX = widthBase * 0.8;
+        const maxOffsetY = heightBase * 0.8;
         const randomTopOffset = Math.random() * maxOffsetY;
         const randomLeftOffset = Math.random() * maxOffsetX;
 
@@ -503,9 +511,9 @@ const App: React.FC = () => {
           position: "absolute",
           top: `${finalTop}%`,
           left: `${finalLeft}%`,
-          width: "10%", // Можно настроить размер предметов
-          transform: "translate(-50%, -50%)", // Центрируем предмет относительно его позиции
-          zIndex: 5, // Предметы выше фона (zIndex: 1), но ниже монстра (zIndex: 10)
+          width: "10%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 5,
         };
 
         return { ...item, style: itemStyle };
@@ -578,6 +586,7 @@ const App: React.FC = () => {
           videoUrl={interactionData.video || ""}
           text={interactionData.text || ""}
           characteristicsChanges={interactionData.characteristicschanges || []}
+          inventoryItems={interactionData.inventoryitems || []}
           onClose={closeRaisingInteraction}
         />
       )}
@@ -629,15 +638,12 @@ const App: React.FC = () => {
                   className="relative aspect-[4/3]"
                   style={{ position: "relative", width: "100%" }}
                 >
-                  {/* Фон - комната */}
                   <img
                     src={roomImage}
                     alt="Room"
                     className="w-full h-full object-cover"
                     style={{ zIndex: 1 }}
                   />
-
-                  {/* --- Новый рендер зон --- */}
                   {Object.entries(placementZones).map(
                     ([zoneName, zoneStyle]) => {
                       const itemsInZone = roomItems.filter(
@@ -665,8 +671,8 @@ const App: React.FC = () => {
                               alt={item.name}
                               title={item.name}
                               style={{
-                                width: "72%", // увеличено на 80% (40% × 1.8)
-                                maxWidth: "108px", // было 60px
+                                width: "72%",
+                                maxWidth: "108px",
                                 marginLeft: idx === 0 ? 0 : "4%",
                                 objectFit: "contain",
                                 pointerEvents: "auto",
@@ -677,8 +683,6 @@ const App: React.FC = () => {
                       );
                     }
                   )}
-
-                  {/* Монстр */}
                   <img
                     src={monsterImage}
                     alt="Monster"
@@ -687,7 +691,6 @@ const App: React.FC = () => {
                   />
                 </div>
               )}
-
               <div className="mt-4 space-y-2 p-2">
                 {characteristics
                   .slice()
