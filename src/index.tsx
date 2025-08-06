@@ -1,58 +1,50 @@
-import React, { useState, useEffect, useMemo } from "react";
-import ReactDOM from "react-dom";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import RaisingInteraction from "./RaisingInteraction";
+
+// ...все твои интерфейсы ниже (можно не менять):
 
 interface InitResponse {
   userId: number;
   monstersId: number[];
   newUser: boolean;
 }
-
 interface MenuItem {
   name: string;
   sequence: number;
   iconURL: string;
   index: boolean;
 }
-
 interface MainMenuResponse {
   menuitems: MenuItem[];
 }
-
 interface NotificationResponse {
   notificationquantity: number;
 }
-
 interface Monster {
   face: string;
   name: string;
   sequence: number;
   index: boolean;
 }
-
 interface MonstersResponse {
   monsters: Monster[];
 }
-
 interface TeachEnergyResponse {
   teachenergy: number;
   nextfreereplenishment: string;
 }
-
 interface MonsterCharacteristic {
   id: number;
   value: number;
   icon: string;
   name: string;
 }
-
 interface MonsterCharacteristicsResponse {
   monstercharacteristics: MonsterCharacteristic[];
 }
-
 interface MonsterImpact {
   id: number;
   image: string;
@@ -62,7 +54,6 @@ interface MonsterImpact {
   energyprice: number;
   minendurance?: number;
 }
-
 interface MonsterImpactsResponse {
   monsterimpacts: MonsterImpact[];
 }
@@ -71,20 +62,9 @@ interface RoomItem {
   id: number;
   name: string;
   spriteUrl: string;
-  placement:
-    | "ceiling_above_the_bed"
-    | "shelf_2"
-    | "shelf_1"
-    | "floor_is_on_the_righ"
-    | "floor_is_on_the_left"
-    | "shelf_3"
-    | "shelf_6"
-    | "shelf_10"
-    | "shelf_9"
-    | "left_side_of_the_room"
-    | "table"
-    | "board"
-    | "shelf_5";
+  placement: string; // placement не используется
+  xaxis: number;
+  yaxis: number;
 }
 
 interface MonsterRoomResponse {
@@ -113,11 +93,8 @@ interface ImpactResponse {
   inventoryitems?: InventoryItem[];
 }
 
-interface StyledRoomItem extends RoomItem {
-  style: React.CSSProperties;
-}
-
 const App: React.FC = () => {
+  // ---- state ----
   const [userId, setUserId] = useState<number | null>(null);
   const [monstersId, setMonstersId] = useState<number[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -147,6 +124,18 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [enduranceIcon, setEnduranceIcon] = useState<string>("");
 
+  // Для хранения размеров каждой картинки-предмета (по id)
+  const [roomItemSizes, setRoomItemSizes] = useState<
+    Record<number, { width: number; height: number }>
+  >({});
+  // Для размеров фонового изображения комнаты
+  const roomBgRef = useRef<HTMLImageElement>(null);
+  const [roomBgSize, setRoomBgSize] = useState<{
+    width: number;
+    height: number;
+  }>({ width: 1, height: 1 }); // не 0 чтобы избежать деления на ноль
+
+  // ---- инициализация и загрузки ----
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -184,9 +173,7 @@ const App: React.FC = () => {
           }
           setMenuItems(items.sort((a, b) => a.sequence - b.sequence));
           const defaultItem = items.find((item) => item.index);
-          if (defaultItem) {
-            setSelectedMenuItem(defaultItem.name);
-          }
+          if (defaultItem) setSelectedMenuItem(defaultItem.name);
         } catch (err) {
           setError("Ошибка при загрузке главного меню");
         }
@@ -282,14 +269,11 @@ const App: React.FC = () => {
       const enduranceChar = response.data.monstercharacteristics.find(
         (char) => char.id === 10012
       );
-      if (enduranceChar) {
-        setEnduranceIcon(enduranceChar.icon);
-      }
+      if (enduranceChar) setEnduranceIcon(enduranceChar.icon);
     } catch (err) {
       setError("Ошибка при загрузке характеристик монстра");
     }
   };
-
   useEffect(() => {
     loadCharacteristics();
   }, [selectedMonsterId]);
@@ -314,7 +298,6 @@ const App: React.FC = () => {
       setError("Ошибка при загрузке изображений монстра и комнаты");
     }
   };
-
   useEffect(() => {
     loadMonsterRoom();
   }, [selectedMonsterId, characteristics]);
@@ -331,7 +314,6 @@ const App: React.FC = () => {
       setError("Ошибка при загрузке взаимодействий");
     }
   };
-
   useEffect(() => {
     loadImpacts();
   }, [selectedMonsterId]);
@@ -342,9 +324,8 @@ const App: React.FC = () => {
       teachEnergy < impact.energyprice ||
       !userId ||
       !selectedMonsterId
-    ) {
+    )
       return;
-    }
     setIsLoading(true);
     try {
       const response = await axios.post<ImpactResponse>(
@@ -373,12 +354,10 @@ const App: React.FC = () => {
     const hours = Math.floor(timeInSeconds / 3600);
     const minutes = Math.floor((timeInSeconds % 3600) / 60);
     const seconds = timeInSeconds % 60;
-
     const parts: string[] = [];
     if (hours > 0) parts.push(`${hours} часов`);
     if (minutes > 0 || hours > 0) parts.push(`${minutes} минут`);
     parts.push(`${seconds} секунд`);
-
     return parts.join(" ");
   };
 
@@ -404,123 +383,51 @@ const App: React.FC = () => {
     }
   };
 
-  const placementZones: { [key: string]: React.CSSProperties } = {
-    ceiling_above_the_bed: {
-      top: "10%",
-      left: "50%",
-      width: "60%",
-      height: "20%",
-    },
-    shelf_1: {
-      top: "8.90%",
-      left: "7.62%",
-      width: "11.20%",
-      height: "11.13%",
-    },
-    shelf_2: {
-      top: "10.91%",
-      left: "19.79%",
-      width: "11.07%",
-      height: "11.33%",
-    },
-    shelf_3: {
-      top: "21.56%",
-      left: "8.01%",
-      width: "10.81%",
-      height: "36.04%",
-    },
-    shelf_5: {
-      top: "61.11%",
-      left: "7.94%",
-      width: "11.26%",
-      height: "5.37%",
-    },
-    shelf_6: {
-      top: "56.71%",
-      left: "20.12%",
-      width: "10.55%",
-      height: "7.62%",
-    },
-    shelf_9: {
-      top: "30.64%",
-      left: "30.60%",
-      width: "13.15%",
-      height: "9.86%",
-    },
-    shelf_10: {
-      top: "40.89%",
-      left: "32.49%",
-      width: "11.33%",
-      height: "7.32%",
-    },
-    floor_is_on_the_right: {
-      top: "86.05%",
-      left: "89.78%",
-      width: "9.57%",
-      height: "12.99%",
-    },
-    floor_is_on_the_left: {
-      top: "87.61%",
-      left: "3.26%",
-      width: "43.42%",
-      height: "11.91%",
-    },
-    left_side_of_the_room: {
-      top: "4.99%",
-      left: "0.91%",
-      width: "5.14%",
-      height: "93.26%",
-    },
-    table: {
-      top: "37.51%",
-      left: "71.68%",
-      width: "24.15%",
-      height: "14.26%",
-    },
-    board: {
-      top: "37.51%",
-      left: "71.68%",
-      width: "24.15%",
-      height: "14.26%",
-    },
-  };
-
-  const memoizedItemsWithStyles = useMemo((): StyledRoomItem[] => {
-    return roomItems
-      .map((item): StyledRoomItem | null => {
-        const zoneStyle = placementZones[item.placement];
-        if (!zoneStyle) {
-          console.warn(`Нет стиля для зоны размещения: ${item.placement}`);
-          return null;
-        }
-
-        const topBase = parseFloat(zoneStyle.top as string);
-        const leftBase = parseFloat(zoneStyle.left as string);
-        const heightBase = parseFloat(zoneStyle.height as string);
-        const widthBase = parseFloat(zoneStyle.width as string);
-
-        const maxOffsetX = widthBase * 0.8;
-        const maxOffsetY = heightBase * 0.8;
-        const randomTopOffset = Math.random() * maxOffsetY;
-        const randomLeftOffset = Math.random() * maxOffsetX;
-
-        const finalTop = topBase + randomTopOffset;
-        const finalLeft = leftBase + randomLeftOffset;
-
-        const itemStyle: React.CSSProperties = {
-          position: "absolute",
-          top: `${finalTop}%`,
-          left: `${finalLeft}%`,
-          width: "10%",
-          transform: "translate(-50%, -50%)",
-          zIndex: 5,
+  // --- загрузка размеров спрайтов предметов ---
+  useEffect(() => {
+    if (roomItems.length === 0) {
+      setRoomItemSizes({});
+      return;
+    }
+    let isMounted = true;
+    const sizes: Record<number, { width: number; height: number }> = {};
+    const promises = roomItems.map((item) => {
+      return new Promise<void>((resolve) => {
+        const img = new window.Image();
+        img.onload = () => {
+          sizes[item.id] = { width: img.width, height: img.height };
+          resolve();
         };
-
-        return { ...item, style: itemStyle };
-      })
-      .filter((item): item is StyledRoomItem => item !== null);
+        img.onerror = () => resolve();
+        img.src = item.spriteUrl;
+      });
+    });
+    Promise.all(promises).then(() => {
+      if (isMounted) setRoomItemSizes(sizes);
+    });
+    return () => {
+      isMounted = false;
+    };
   }, [roomItems]);
 
+  // --- обновление размера фоновой картинки (на случай ресайза окна) ---
+  useEffect(() => {
+    function updateSize() {
+      if (roomBgRef.current) {
+        setRoomBgSize({
+          width: roomBgRef.current.clientWidth,
+          height: roomBgRef.current.clientHeight,
+        });
+      }
+    }
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => {
+      window.removeEventListener("resize", updateSize);
+    };
+  }, [roomImage]);
+
+  // --- UI ---
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
       {isLoading && (
@@ -635,54 +542,66 @@ const App: React.FC = () => {
             <div className="w-full md:w-1/2 border border-gray-300 bg-orange-100">
               {roomImage && monsterImage && (
                 <div
-                  className="relative aspect-[4/3]"
-                  style={{ position: "relative", width: "100%" }}
+                  className="relative"
+                  style={{
+                    width: "100%",
+                    aspectRatio: "4/3",
+                    background: "#fff",
+                  }}
                 >
                   <img
                     src={roomImage}
                     alt="Room"
-                    className="w-full h-full object-cover"
-                    style={{ zIndex: 1 }}
+                    ref={roomBgRef}
+                    className="w-full h-full object-contain"
+                    style={{
+                      display: "block",
+                      zIndex: 1,
+                      position: "relative",
+                      pointerEvents: "none",
+                      background: "#fff",
+                    }}
+                    onLoad={() => {
+                      if (roomBgRef.current) {
+                        setRoomBgSize({
+                          width: roomBgRef.current.clientWidth,
+                          height: roomBgRef.current.clientHeight,
+                        });
+                      }
+                    }}
                   />
-                  {Object.entries(placementZones).map(
-                    ([zoneName, zoneStyle]) => {
-                      const itemsInZone = roomItems.filter(
-                        (item) => item.placement === zoneName
-                      );
-                      if (itemsInZone.length === 0) return null;
-                      return (
-                        <div
-                          key={zoneName}
-                          style={{
-                            ...zoneStyle,
-                            position: "absolute",
-                            display: "flex",
-                            flexDirection: "row",
-                            alignItems: "flex-end",
-                            justifyContent: "flex-start",
-                            pointerEvents: "none",
-                            zIndex: 5,
-                          }}
-                        >
-                          {itemsInZone.map((item, idx) => (
-                            <img
-                              key={item.id}
-                              src={item.spriteUrl}
-                              alt={item.name}
-                              title={item.name}
-                              style={{
-                                width: "72%",
-                                maxWidth: "108px",
-                                marginLeft: idx === 0 ? 0 : "4%",
-                                objectFit: "contain",
-                                pointerEvents: "auto",
-                              }}
-                            />
-                          ))}
-                        </div>
-                      );
-                    }
-                  )}
+                  {/* Теперь рендер предметов */}
+                  {roomItems.map((item) => {
+                    const size = roomItemSizes[item.id];
+                    if (!size) return null; // Ждем загрузки
+                    // Ширина/высота фонового изображения
+                    const bgW = roomBgSize.width;
+                    const bgH = roomBgSize.height;
+                    // Перевод процентов в пиксели
+                    const cx = (item.xaxis / 100) * bgW;
+                    const cy = (item.yaxis / 100) * bgH;
+                    // Чтобы центр совпал с точкой:
+                    const leftPx = cx - size.width / 2;
+                    const topPx = cy - size.height / 2;
+                    return (
+                      <img
+                        key={item.id}
+                        src={item.spriteUrl}
+                        alt={item.name}
+                        title={item.name}
+                        style={{
+                          position: "absolute",
+                          left: `${leftPx}px`,
+                          top: `${topPx}px`,
+                          width: `${size.width}px`,
+                          height: `${size.height}px`,
+                          zIndex: 5,
+                          pointerEvents: "auto",
+                        }}
+                      />
+                    );
+                  })}
+                  {/* Монстр (оставь как было, если он должен быть поверх предметов): */}
                   <img
                     src={monsterImage}
                     alt="Monster"
@@ -769,6 +688,5 @@ const App: React.FC = () => {
 };
 
 import { createRoot } from "react-dom/client";
-
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
