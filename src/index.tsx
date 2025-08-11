@@ -4,8 +4,43 @@ import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import RaisingInteraction from "./RaisingInteraction";
 
-// ...все твои интерфейсы ниже (можно не менять):
+// Автоматическое поджатие текста под ширину контейнера (в одну строку)
+const AutoFitText: React.FC<{
+  children: React.ReactNode;
+  min?: number; // минимальный размер шрифта в px
+  max?: number; // максимально допустимый размер шрифта в px
+  className?: string;
+}> = ({ children, min = 10, max = 16, className }) => {
+  const ref = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    // Сброс и начальная установка
+    let font = max;
+    el.style.whiteSpace = "nowrap";
+    el.style.fontSize = font + "px";
+    el.style.lineHeight = "1.1";
+    el.style.display = "block";
+    el.style.width = "100%";
+    el.style.overflow = "hidden";
+
+    // Уменьшаем шрифт, пока текст не влезет по ширине
+    while (font > min && el.scrollWidth > el.clientWidth) {
+      font -= 1;
+      el.style.fontSize = font + "px";
+    }
+  }, [children, min, max]);
+
+  return (
+    <div ref={ref} className={`w-full text-center ${className || ""}`}>
+      {children}
+    </div>
+  );
+};
+
+// --- типы данных ---
 interface InitResponse {
   userId: number;
   monstersId: number[];
@@ -62,7 +97,7 @@ interface RoomItem {
   id: number;
   name: string;
   spriteUrl: string;
-  placement: string; // placement не используется
+  placement: string;
   xaxis: number;
   yaxis: number;
 }
@@ -500,12 +535,16 @@ const App: React.FC = () => {
 
       {!showRaisingInteraction && selectedMenuItem && (
         <div className="p-4">
-          <div className="flex justify-between">
-            <div className="flex space-x-1">
+          {/* БЛОК С ПЕРЕКЛЮЧАТЕЛЕМ МОНСТРОВ И ЭНЕРГИЕЙ */}
+          {/* На узком экране: один под другим (энергия ПОД переключателем).
+              На md и шире: в ряд. */}
+          <div className="flex flex-col gap-2 md:flex-row md:justify-between">
+            {/* Переключатель монстров */}
+            <div className="flex space-x-1 overflow-x-auto pb-1">
               {monsters.map((monster, index) => (
                 <div
                   key={monster.name}
-                  className={`relative w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 cursor-pointer border border-gray-300 ${
+                  className={`relative min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 cursor-pointer border border-gray-300 ${
                     selectedMonsterId === monstersId[index]
                       ? "border-2 border-purple-500"
                       : ""
@@ -523,7 +562,9 @@ const App: React.FC = () => {
                 </div>
               ))}
             </div>
-            <div className="flex items-center space-x-2 border border-gray-300 p-2 bg-purple-50">
+
+            {/* Энергия на воспитательные взаимодействия */}
+            <div className="flex items-center space-x-2 border border-gray-300 p-2 bg-purple-50 w-full md:w-auto">
               <img
                 src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
                 alt="Teach Energy"
@@ -538,6 +579,7 @@ const App: React.FC = () => {
               </button>
             </div>
           </div>
+
           <div className="mt-4 flex flex-col md:flex-row md:space-x-1">
             <div className="w-full md:w-1/2 border border-gray-300 bg-orange-100">
               {roomImage && monsterImage && (
@@ -570,17 +612,14 @@ const App: React.FC = () => {
                       }
                     }}
                   />
-                  {/* Теперь рендер предметов */}
+                  {/* Предметы */}
                   {roomItems.map((item) => {
                     const size = roomItemSizes[item.id];
-                    if (!size) return null; // Ждем загрузки
-                    // Ширина/высота фонового изображения
+                    if (!size) return null;
                     const bgW = roomBgSize.width;
                     const bgH = roomBgSize.height;
-                    // Перевод процентов в пиксели
                     const cx = (item.xaxis / 100) * bgW;
                     const cy = (item.yaxis / 100) * bgH;
-                    // Чтобы центр совпал с точкой:
                     const leftPx = cx - size.width / 2;
                     const topPx = cy - size.height / 2;
                     return (
@@ -601,7 +640,7 @@ const App: React.FC = () => {
                       />
                     );
                   })}
-                  {/* Монстр (оставь как было, если он должен быть поверх предметов): */}
+                  {/* Монстр поверх */}
                   <img
                     src={monsterImage}
                     alt="Monster"
@@ -631,7 +670,9 @@ const App: React.FC = () => {
                   ))}
               </div>
             </div>
-            <div className="w-full md:w-1/2 mt-4 md:mt-0 grid grid-cols-4 gap-1 bg-purple-200">
+
+            {/* Набор доступных воспитательных взаимодействий с монстром */}
+            <div className="w-full md:w-1/2 mt-4 md:mt-0 grid grid-cols-2 md:grid-cols-4 gap-1 bg-purple-200">
               {impacts.map((impact) => (
                 <div
                   key={impact.name}
@@ -648,9 +689,16 @@ const App: React.FC = () => {
                     alt={impact.name}
                     className="w-full h-auto object-contain"
                   />
-                  <div className="text-center text-purple-800 my-0">
+
+                  {/* Название авто-ужимается, чтобы не вылезать за пределы бейджа */}
+                  <AutoFitText
+                    className="text-purple-800 px-1"
+                    min={10}
+                    max={16}
+                  >
                     {impact.name}
-                  </div>
+                  </AutoFitText>
+
                   <div className="flex items-center justify-center mb-1 space-x-2">
                     {impact.minendurance !== undefined &&
                       impact.minendurance !== null &&
@@ -683,6 +731,7 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+      <SpeedInsights />
     </div>
   );
 };
