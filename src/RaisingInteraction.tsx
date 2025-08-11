@@ -87,7 +87,7 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
                   key={change.characteristicsid}
                   className="border-b border-gray-300"
                 >
-                  <td className="py-2 px-3 sm:px-4 whitespace-nowrap">
+                  <td className="py-2 px-3 sm:px-4 break-words text-xs xs:text-sm sm:text-base">
                     {change.name}
                   </td>
                   <td
