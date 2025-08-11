@@ -5,10 +5,12 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import RaisingInteraction from "./RaisingInteraction";
 
 // Автоматическое поджатие текста под ширину контейнера (в одну строку)
+// Автоматическое поджатие текста: сначала в одну строку,
+// если дошли до минимума и всё равно не влезло — включаем переносы.
 const AutoFitText: React.FC<{
   children: React.ReactNode;
-  min?: number; // минимальный размер шрифта в px
-  max?: number; // максимально допустимый размер шрифта в px
+  min?: number;
+  max?: number;
   className?: string;
 }> = ({ children, min = 10, max = 16, className }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -17,19 +19,29 @@ const AutoFitText: React.FC<{
     const el = ref.current;
     if (!el) return;
 
-    // Сброс и начальная установка
-    let font = max;
+    // Сброс стилей
     el.style.whiteSpace = "nowrap";
-    el.style.fontSize = font + "px";
+    el.style.overflow = "hidden";
+    el.style.fontSize = `${max}px`;
     el.style.lineHeight = "1.1";
     el.style.display = "block";
     el.style.width = "100%";
-    el.style.overflow = "hidden";
 
-    // Уменьшаем шрифт, пока текст не влезет по ширине
+    // Этап 1: ужимаем в одну строку
+    let font = max;
     while (font > min && el.scrollWidth > el.clientWidth) {
       font -= 1;
-      el.style.fontSize = font + "px";
+      el.style.fontSize = `${font}px`;
+    }
+
+    // Этап 2: если достигли минимума и текст всё ещё шире контейнера,
+    // включаем переносы строк с дефисами
+    if (el.scrollWidth > el.clientWidth) {
+      el.style.whiteSpace = "normal";
+      // переносы/дефисы в разных браузерах
+      (el.style as any).overflowWrap = "anywhere"; // страхует длинные слова
+      (el.style as any).wordBreak = "break-word";
+      (el.style as any).hyphens = "auto";
     }
   }, [children, min, max]);
 
@@ -580,6 +592,7 @@ const App: React.FC = () => {
   }, [selectedMonsterId, booting]);
 
   // --- клик по взаимодействию ---
+  // --- клик по взаимодействию ---
   const handleImpactClick = async (impact: MonsterImpact) => {
     if (
       !impact.available ||
@@ -588,7 +601,10 @@ const App: React.FC = () => {
       !selectedMonsterId
     )
       return;
+
     setIsLoading(true);
+    let shouldOpenInteraction = false;
+
     try {
       const response = await axios.post<ImpactResponse>(
         "https://functions.yandexcloud.net/d4een4tv1fhjs9o05ogj",
@@ -598,17 +614,26 @@ const App: React.FC = () => {
           userId: userId,
         }
       );
+
       if (response.data.errortext) {
         setError(response.data.errortext);
-      } else {
-        setInteractionData(response.data);
-        setShowRaisingInteraction(true);
-        await Promise.all([loadTeachEnergy(), loadCharacteristics()]);
+        return;
       }
+
+      setInteractionData(response.data);
+      shouldOpenInteraction = true;
+
+      // Подзагрузим связанные данные, пока крутится спиннер
+      await Promise.all([loadTeachEnergy(), loadCharacteristics()]);
     } catch {
       setError("Ошибка при выполнении взаимодействия");
     } finally {
+      // ВАЖНО: сначала скрываем спиннер, затем показываем видео-блок
       setIsLoading(false);
+      if (shouldOpenInteraction) {
+        // Монтируем компонент только после исчезновения спиннера
+        setShowRaisingInteraction(true);
+      }
     }
   };
 

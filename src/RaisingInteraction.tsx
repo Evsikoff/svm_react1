@@ -54,6 +54,8 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
             className="w-full h-auto rounded-md shadow-md"
             src={videoUrl}
             autoPlay
+            playsInline
+            preload="auto"
             muted={false}
             controls={false}
             onEnded={(e) => {
