@@ -128,6 +128,30 @@ interface ImpactResponse {
   inventoryitems?: InventoryItem[];
 }
 
+// --- вспомогательные типы для полосы загрузки ---
+type BootTaskKey =
+  | "init"
+  | "mainmenu"
+  | "notifications"
+  | "monsters"
+  | "teachenergy"
+  | "characteristics"
+  | "monsterroom"
+  | "impacts";
+
+type BootTask = { key: BootTaskKey; label: string; done: boolean };
+
+const BOOT_TASKS_ORDER: BootTask[] = [
+  { key: "init", label: "Инициализация", done: false },
+  { key: "mainmenu", label: "Главное меню", done: false },
+  { key: "notifications", label: "Уведомления", done: false },
+  { key: "monsters", label: "Монстры", done: false },
+  { key: "teachenergy", label: "Энергия", done: false },
+  { key: "characteristics", label: "Характеристики", done: false },
+  { key: "monsterroom", label: "Комната и монстр", done: false },
+  { key: "impacts", label: "Взаимодействия", done: false },
+];
+
 const App: React.FC = () => {
   // ---- state ----
   const [userId, setUserId] = useState<number | null>(null);
@@ -151,13 +175,20 @@ const App: React.FC = () => {
   const [roomItems, setRoomItems] = useState<RoomItem[]>([]);
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+
   const [showRaisingInteraction, setShowRaisingInteraction] =
     useState<boolean>(false);
   const [interactionData, setInteractionData] = useState<ImpactResponse | null>(
     null
   );
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [enduranceIcon, setEnduranceIcon] = useState<string>("");
+
+  const [isLoading, setIsLoading] = useState<boolean>(false); // спиннер для взаимодействий
+
+  // --- состояние экрана загрузки ---
+  const [booting, setBooting] = useState<boolean>(true);
+  const [bootTasks, setBootTasks] = useState<BootTask[]>(
+    BOOT_TASKS_ORDER.map((t) => ({ ...t }))
+  );
 
   // Для хранения размеров каждой картинки-предмета (по id)
   const [roomItemSizes, setRoomItemSizes] = useState<
@@ -170,189 +201,385 @@ const App: React.FC = () => {
     height: number;
   }>({ width: 1, height: 1 }); // не 0 чтобы избежать деления на ноль
 
-  // ---- инициализация и загрузки ----
-  useEffect(() => {
-    const initApp = async () => {
+  // -------- универсальная обёртка с повторами --------
+  async function withRetry<T>(
+    fn: () => Promise<T>,
+    isValid: (v: T) => boolean,
+    labelForError: string
+  ): Promise<T> {
+    let lastErr: any = null;
+    for (let attempt = 1; attempt <= 4; attempt++) {
       try {
-        const response = await axios.post<InitResponse>(
-          "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/init",
-          {
-            yandexUserId: "ajeksdnx-somerandomid-29112024",
-            yandexUserName: "Иван Петров",
-            yandexUserPhotoURL:
-              "https://avatars.yandex.net/get-yapic/12345/some-image-id/islands-200",
-          }
-        );
-        setUserId(response.data.userId);
-        setMonstersId(response.data.monstersId);
-      } catch (err) {
-        setError("Ошибка при инициализации приложения");
+        const res = await fn();
+        // "ничего не выдал" — считаем невалидным
+        if (!isValid(res)) {
+          throw new Error("Пустой или некорректный ответ");
+        }
+        return res;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 4) {
+          // небольшая пауза между повторами
+          await new Promise((r) => setTimeout(r, 300));
+          continue;
+        }
       }
-    };
-    initApp();
-  }, []);
+    }
+    // 4-я попытка провалилась — показываем уже разработанную ошибку
+    const text =
+      typeof lastErr?.message === "string"
+        ? `${labelForError}: ${lastErr.message}`
+        : `${labelForError}`;
+    setError(text);
+    setBooting(false);
+    throw lastErr;
+  }
 
-  useEffect(() => {
-    if (monstersId.length > 0) {
-      const loadMainMenu = async () => {
-        try {
+  // -------- методы загрузки в виде функций, чтобы их можно было вызывать и из bootstrap, и позже --------
+  const api = {
+    init: async () =>
+      withRetry(
+        async () => {
+          const response = await axios.post<InitResponse>(
+            "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/init",
+            {
+              yandexUserId: "ajeksdnx-somerandomid-29112024",
+              yandexUserName: "Иван Петров",
+              yandexUserPhotoURL:
+                "https://avatars.yandex.net/get-yapic/12345/some-image-id/islands-200",
+            }
+          );
+          setUserId(response.data.userId);
+          setMonstersId(response.data.monstersId);
+          return response.data;
+        },
+        (d) =>
+          !!d && typeof d.userId === "number" && Array.isArray(d.monstersId),
+        "Ошибка при инициализации приложения"
+      ),
+
+    mainmenu: async (monstersIdParam: number[]) =>
+      withRetry(
+        async () => {
           const response = await axios.post<MainMenuResponse>(
             "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/mainmenu",
-            { monstersId }
+            { monstersId: monstersIdParam }
           );
-          const items = response.data.menuitems;
+          const items = response.data.menuitems || [];
           const indexItems = items.filter((item) => item.index);
           if (indexItems.length > 1) {
-            setError("Ошибка: Несколько пунктов меню с index=true");
-            return;
+            throw new Error("Несколько пунктов меню с index=true");
           }
           setMenuItems(items.sort((a, b) => a.sequence - b.sequence));
-          const defaultItem = items.find((item) => item.index);
-          if (defaultItem) setSelectedMenuItem(defaultItem.name);
-        } catch (err) {
-          setError("Ошибка при загрузке главного меню");
-        }
-      };
-      loadMainMenu();
-    }
-  }, [monstersId]);
+          const def = items.find((it) => it.index);
+          if (def) setSelectedMenuItem(def.name);
+          return response.data;
+        },
+        (d) => !!d && Array.isArray(d.menuitems),
+        "Ошибка при загрузке главного меню"
+      ),
 
-  useEffect(() => {
-    if (userId) {
-      const loadNotifications = async () => {
-        try {
+    notifications: async (userIdParam: number) =>
+      withRetry(
+        async () => {
           const response = await axios.get<NotificationResponse>(
-            `https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/notificationcounter?userId=${userId}`
+            `https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/notificationcounter?userId=${userIdParam}`
           );
           setNotificationCount(response.data.notificationquantity);
-        } catch (err) {
-          setError("Ошибка при загрузке уведомлений");
-        }
-      };
-      loadNotifications();
-    }
-  }, [userId]);
+          return response.data;
+        },
+        (d) => d != null && typeof d.notificationquantity === "number",
+        "Ошибка при загрузке уведомлений"
+      ),
 
-  useEffect(() => {
-    if (monstersId.length > 0) {
-      const loadMonsters = async () => {
-        try {
+    monsters: async (monstersIdParam: number[]) =>
+      withRetry(
+        async () => {
           const response = await axios.post<MonstersResponse>(
             "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/monsters",
-            { monstersId }
+            { monstersId: monstersIdParam }
           );
-          const sortedMonsters = response.data.monsters.sort(
+          const sorted = (response.data.monsters || []).sort(
             (a, b) => a.sequence - b.sequence
           );
-          setMonsters(sortedMonsters);
-          const defaultMonster = sortedMonsters.find((m) => m.index);
-          if (defaultMonster) {
-            setSelectedMonsterId(
-              monstersId[sortedMonsters.findIndex((m) => m.index)]
-            );
-          }
-        } catch (err) {
-          setError("Ошибка при загрузке монстров");
-        }
-      };
-      loadMonsters();
-    }
-  }, [monstersId]);
+          setMonsters(sorted);
+          const def = sorted.findIndex((m) => m.index);
+          if (def >= 0) setSelectedMonsterId(monstersIdParam[def]);
+          return response.data;
+        },
+        (d) => !!d && Array.isArray(d.monsters),
+        "Ошибка при загрузке монстров"
+      ),
 
+    teachenergy: async (userIdParam: number) =>
+      withRetry(
+        async () => {
+          const response = await axios.post<TeachEnergyResponse>(
+            "https://functions.yandexcloud.net/d4ek0gg34e57hosr45u8",
+            { userId: userIdParam }
+          );
+          setTeachEnergy(response.data.teachenergy);
+          setNextReplenishment(response.data.nextfreereplenishment);
+          return response.data;
+        },
+        (d) => d != null && typeof d.teachenergy === "number",
+        "Ошибка при загрузке энергии"
+      ),
+
+    characteristics: async (monsterIdParam: number) =>
+      withRetry(
+        async () => {
+          const response = await axios.post<MonsterCharacteristicsResponse>(
+            "https://functions.yandexcloud.net/d4eja3aglipp5f8hfb73",
+            { monsterId: monsterIdParam }
+          );
+          setCharacteristics(response.data.monstercharacteristics || []);
+          return response.data;
+        },
+        (d) => !!d && Array.isArray(d.monstercharacteristics),
+        "Ошибка при загрузке характеристик монстра"
+      ),
+
+    monsterroom: async (
+      monsterIdParam: number,
+      characteristicsParam: MonsterCharacteristic[]
+    ) =>
+      withRetry(
+        async () => {
+          const response = await axios.post<MonsterRoomResponse>(
+            "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
+            {
+              monsterId: monsterIdParam,
+              monstercharacteristics: characteristicsParam.map((c) => ({
+                id: c.id,
+                value: c.value,
+              })),
+            }
+          );
+          setMonsterImage(response.data.monsterimage);
+          setRoomImage(response.data.roomimage);
+          setRoomItems(response.data.roomitems || []);
+          return response.data;
+        },
+        (d) => !!d && !!d.monsterimage && !!d.roomimage,
+        "Ошибка при загрузке изображений монстра и комнаты"
+      ),
+
+    impacts: async (monsterIdParam: number) =>
+      withRetry(
+        async () => {
+          const response = await axios.post<MonsterImpactsResponse>(
+            "https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj",
+            { monsterId: monsterIdParam }
+          );
+          setImpacts(response.data.monsterimpacts || []);
+          return response.data;
+        },
+        (d) => !!d && Array.isArray(d.monsterimpacts),
+        "Ошибка при загрузке взаимодействий"
+      ),
+  };
+
+  // --- отметка выполненной задачи на прогресс-баре ---
+  const markTaskDone = (key: BootTaskKey) => {
+    setBootTasks((prev) =>
+      prev.map((t) => (t.key === key ? { ...t, done: true } : t))
+    );
+  };
+
+  // ---- ЕДИНЫЙ Bootstrap первоначальной загрузки приложения ----
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      try {
+        setBooting(true);
+        setError("");
+
+        // 1) init
+        const initRes = await api.init();
+        if (cancelled) return;
+        markTaskDone("init");
+
+        // 2) main menu
+        await api.mainmenu(initRes.monstersId);
+        if (cancelled) return;
+        markTaskDone("mainmenu");
+
+        // 3) notifications
+        await api.notifications(initRes.userId);
+        if (cancelled) return;
+        markTaskDone("notifications");
+
+        // 4) monsters
+        const monstersRes = await api.monsters(initRes.monstersId);
+        if (cancelled) return;
+        markTaskDone("monsters");
+
+        // определяем выбранного монстра
+        let selectedMonsterLocal: number | null = null;
+        if (Array.isArray(monstersRes.monsters)) {
+          const idx = monstersRes.monsters.findIndex((m) => m.index);
+          selectedMonsterLocal =
+            idx >= 0 ? initRes.monstersId[idx] : initRes.monstersId[0];
+        } else {
+          selectedMonsterLocal = initRes.monstersId[0];
+        }
+
+        if (selectedMonsterLocal == null) {
+          throw new Error("Не удалось определить выбранного монстра");
+        }
+
+        // 5) teach energy
+        await api.teachenergy(initRes.userId);
+        if (cancelled) return;
+        markTaskDone("teachenergy");
+
+        // 6) characteristics
+        const charRes = await api.characteristics(selectedMonsterLocal);
+        if (cancelled) return;
+        markTaskDone("characteristics");
+
+        // 7) monster room (нужны характеристики)
+        await api.monsterroom(
+          selectedMonsterLocal,
+          charRes.monstercharacteristics || []
+        );
+        if (cancelled) return;
+        markTaskDone("monsterroom");
+
+        // 8) impacts
+        await api.impacts(selectedMonsterLocal);
+        if (cancelled) return;
+        markTaskDone("impacts");
+
+        setBooting(false);
+      } catch {
+        // setError уже выставлен в withRetry, тут просто убедимся, что загрузчик скрыт
+        setBooting(false);
+      }
+    };
+
+    bootstrap();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // --- дальнейшие эффекты (НЕ работают во время bootstrap, чтобы не было дублей) ---
+  // Главное меню (реакция на monstersId) — после бутстрапа может пригодиться при смене монстров
+  useEffect(() => {
+    if (booting) return;
+    if (monstersId.length === 0) return;
+    (async () => {
+      try {
+        await api.mainmenu(monstersId);
+      } catch {
+        /* ошибка уже показана */
+      }
+    })();
+  }, [monstersId, booting]);
+
+  // Уведомления — при наличии userId
+  useEffect(() => {
+    if (booting) return;
+    if (!userId) return;
+    (async () => {
+      try {
+        await api.notifications(userId);
+      } catch {
+        /* ошибка уже показана */
+      }
+    })();
+  }, [userId, booting]);
+
+  // Монстры — при смене monstersId
+  useEffect(() => {
+    if (booting) return;
+    if (monstersId.length === 0) return;
+    (async () => {
+      try {
+        await api.monsters(monstersId);
+      } catch {
+        /* ошибка уже показана */
+      }
+    })();
+  }, [monstersId, booting]);
+
+  // Энергия пользователя
   const loadTeachEnergy = async () => {
     if (!userId) return;
     try {
-      const response = await axios.post<TeachEnergyResponse>(
-        "https://functions.yandexcloud.net/d4ek0gg34e57hosr45u8",
-        { userId }
-      );
-      setTeachEnergy(response.data.teachenergy);
-      setNextReplenishment(response.data.nextfreereplenishment);
-    } catch (err) {
-      setError("Ошибка при загрузке энергии");
+      await api.teachenergy(userId);
+    } catch {
+      /* ошибка уже показана */
     }
   };
-
   useEffect(() => {
+    if (booting) return;
     loadTeachEnergy();
-  }, [userId]);
+  }, [userId, booting]);
 
+  // Таймер пополнения энергии
   useEffect(() => {
-    if (nextReplenishment) {
-      const targetTime = new Date(nextReplenishment).getTime();
-      const updateTimer = () => {
-        const now = new Date().getTime();
-        const timeLeft = Math.max(0, Math.floor((targetTime - now) / 1000));
-        setTimer(timeLeft);
-        if (timeLeft <= 0) {
-          loadTeachEnergy();
-        }
-      };
-      const interval = setInterval(updateTimer, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [nextReplenishment, userId]);
+    if (booting) return;
+    if (!nextReplenishment) return;
+    const targetTime = new Date(nextReplenishment).getTime();
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const timeLeft = Math.max(0, Math.floor((targetTime - now) / 1000));
+      setTimer(timeLeft);
+      if (timeLeft <= 0) {
+        loadTeachEnergy();
+      }
+    };
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [nextReplenishment, userId, booting]);
 
+  // Характеристики выбранного монстра
   const loadCharacteristics = async () => {
     if (!selectedMonsterId) return;
     try {
-      const response = await axios.post<MonsterCharacteristicsResponse>(
-        "https://functions.yandexcloud.net/d4eja3aglipp5f8hfb73",
-        { monsterId: selectedMonsterId }
-      );
-      setCharacteristics(response.data.monstercharacteristics);
-      const enduranceChar = response.data.monstercharacteristics.find(
-        (char) => char.id === 10012
-      );
-      if (enduranceChar) setEnduranceIcon(enduranceChar.icon);
-    } catch (err) {
-      setError("Ошибка при загрузке характеристик монстра");
+      await api.characteristics(selectedMonsterId);
+    } catch {
+      /* ошибка уже показана */
     }
   };
   useEffect(() => {
+    if (booting) return;
     loadCharacteristics();
-  }, [selectedMonsterId]);
+  }, [selectedMonsterId, booting]);
 
+  // Комната монстра
   const loadMonsterRoom = async () => {
     if (!selectedMonsterId || characteristics.length === 0) return;
     try {
-      const response = await axios.post<MonsterRoomResponse>(
-        "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
-        {
-          monsterId: selectedMonsterId,
-          monstercharacteristics: characteristics.map((c) => ({
-            id: c.id,
-            value: c.value,
-          })),
-        }
-      );
-      setMonsterImage(response.data.monsterimage);
-      setRoomImage(response.data.roomimage);
-      setRoomItems(response.data.roomitems || []);
-    } catch (err) {
-      setError("Ошибка при загрузке изображений монстра и комнаты");
+      await api.monsterroom(selectedMonsterId, characteristics);
+    } catch {
+      /* ошибка уже показана */
     }
   };
   useEffect(() => {
+    if (booting) return;
     loadMonsterRoom();
-  }, [selectedMonsterId, characteristics]);
+  }, [selectedMonsterId, characteristics, booting]);
 
+  // Взаимодействия
   const loadImpacts = async () => {
     if (!selectedMonsterId) return;
     try {
-      const response = await axios.post<MonsterImpactsResponse>(
-        "https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj",
-        { monsterId: selectedMonsterId }
-      );
-      setImpacts(response.data.monsterimpacts);
-    } catch (err) {
-      setError("Ошибка при загрузке взаимодействий");
+      await api.impacts(selectedMonsterId);
+    } catch {
+      /* ошибка уже показана */
     }
   };
   useEffect(() => {
+    if (booting) return;
     loadImpacts();
-  }, [selectedMonsterId]);
+  }, [selectedMonsterId, booting]);
 
+  // --- клик по взаимодействию ---
   const handleImpactClick = async (impact: MonsterImpact) => {
     if (
       !impact.available ||
@@ -378,7 +605,7 @@ const App: React.FC = () => {
         setShowRaisingInteraction(true);
         await Promise.all([loadTeachEnergy(), loadCharacteristics()]);
       }
-    } catch (err) {
+    } catch {
       setError("Ошибка при выполнении взаимодействия");
     } finally {
       setIsLoading(false);
@@ -409,7 +636,7 @@ const App: React.FC = () => {
         loadMonsterRoom(),
         loadImpacts(),
       ]);
-    } catch (err) {
+    } catch {
       setError("Ошибка при обновлении данных");
     } finally {
       setIsLoading(false);
@@ -462,22 +689,64 @@ const App: React.FC = () => {
     };
   }, [roomImage]);
 
+  // --- вычисления для enduranceIcon (иконка выносливости) ---
+  const enduranceIcon = characteristics.find((c) => c.id === 10012)?.icon || "";
+
   // --- UI ---
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
+      {/* ЭКРАН ПЕРВИЧНОЙ ЗАГРУЗКИ */}
+      {booting && !error && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gradient-to-b from-purple-200 to-orange-200">
+          <img
+            src="https://storage.yandexcloud.net/svm/loading.gif"
+            alt="Loading"
+            className="w-[60%] h-auto mb-6 max-w-xl"
+          />
+          <div className="text-3xl font-bold tracking-wider text-purple-700 mb-6">
+            ЗАГРУЗКА
+          </div>
+
+          {/* Прогресс-бар с делениями = числу методов */}
+          <div className="w-[90%] max-w-3xl">
+            <div className="flex gap-2 mb-3">
+              {bootTasks.map((t, i) => (
+                <div key={t.key} className="flex-1">
+                  <div
+                    className={`h-3 rounded ${
+                      t.done ? "bg-purple-600" : "bg-purple-200"
+                    }`}
+                    title={`${i + 1}. ${t.label}`}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between text-xs text-gray-600">
+              {bootTasks.map((t) => (
+                <span key={t.key} className="truncate w-[12%]">
+                  {t.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Спиннер для выполнения взаимодействий */}
       {isLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
 
+      {/* Окно ошибок (в том числе при провале всех 4 попыток любого метода) */}
       {error && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[120]">
+          <div className="bg-white p-6 rounded shadow-lg max-w-md w-[90%]">
             <div className="text-red-500 text-center mb-4">{error}</div>
             <button
               onClick={closeError}
-              className="bg-purple-500 text-white px-4 py-2 rounded"
+              className="bg-purple-500 text-white px-4 py-2 rounded w-full"
             >
               OK
             </button>
@@ -485,6 +754,7 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* Основное содержимое приложения (скрыто под экраном загрузки) */}
       <div className="bg-gradient-to-r from-purple-500 to-orange-500 text-white text-4xl font-handwritten text-center py-4">
         СИМУЛЯТОР ВОСПИТАНИЯ МОНСТРОВ
       </div>
