@@ -32,6 +32,12 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "smooth",
+    });
+
     if (videoRef.current) {
       videoRef.current.volume = 0.2;
     }
@@ -45,7 +51,7 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
       <div className="flex justify-center mb-4">
         <video
           ref={videoRef}
-          className="max-w-[40%] h-auto"
+          className="w-[75%] max-w-[80%] h-auto"
           src={videoUrl}
           autoPlay
           muted={false}
@@ -56,6 +62,7 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
           }}
         />
       </div>
+
       <div className="flex justify-center mb-4">
         <div className="bg-purple-100 p-4 border border-gray-300 shadow-md w-[75%] max-w-[80%]">
           <p className="text-lg font-bold text-purple-800">{text}</p>
