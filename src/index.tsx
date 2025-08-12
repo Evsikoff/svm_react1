@@ -3,6 +3,9 @@ import axios from "axios";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import RaisingInteraction from "./RaisingInteraction";
+import Arena from "./Arena";
+import Invent from "./Invent";
+import Account from "./Account";
 
 // Автоматическое поджатие текста под ширину контейнера (в одну строку)
 // Автоматическое поджатие текста: сначала в одну строку,
@@ -38,7 +41,6 @@ const AutoFitText: React.FC<{
     // включаем переносы строк с дефисами
     if (el.scrollWidth > el.clientWidth) {
       el.style.whiteSpace = "normal";
-      // переносы/дефисы в разных браузерах
       (el.style as any).overflowWrap = "anywhere"; // страхует длинные слова
       (el.style as any).wordBreak = "break-word";
       (el.style as any).hyphens = "auto";
@@ -170,6 +172,9 @@ const App: React.FC = () => {
   const [monstersId, setMonstersId] = useState<number[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
+  const [selectedMenuSequence, setSelectedMenuSequence] = useState<
+    number | null
+  >(null);
   const [notificationCount, setNotificationCount] = useState<number>(0);
   const [monsters, setMonsters] = useState<Monster[]>([]);
   const [selectedMonsterId, setSelectedMonsterId] = useState<number | null>(
@@ -247,7 +252,7 @@ const App: React.FC = () => {
     throw lastErr;
   }
 
-  // -------- методы загрузки в виде функций, чтобы их можно было вызывать и из bootstrap, и позже --------
+  // -------- методы загрузки --------
   const api = {
     init: async () =>
       withRetry(
@@ -282,9 +287,13 @@ const App: React.FC = () => {
           if (indexItems.length > 1) {
             throw new Error("Несколько пунктов меню с index=true");
           }
-          setMenuItems(items.sort((a, b) => a.sequence - b.sequence));
-          const def = items.find((it) => it.index);
-          if (def) setSelectedMenuItem(def.name);
+          const sortedItems = items.sort((a, b) => a.sequence - b.sequence);
+          setMenuItems(sortedItems);
+          const def = sortedItems.find((it) => it.index);
+          if (def) {
+            setSelectedMenuItem(def.name);
+            setSelectedMenuSequence(def.sequence);
+          }
           return response.data;
         },
         (d) => !!d && Array.isArray(d.menuitems),
@@ -592,7 +601,6 @@ const App: React.FC = () => {
   }, [selectedMonsterId, booting]);
 
   // --- клик по взаимодействию ---
-  // --- клик по взаимодействию ---
   const handleImpactClick = async (impact: MonsterImpact) => {
     if (
       !impact.available ||
@@ -717,6 +725,28 @@ const App: React.FC = () => {
   // --- вычисления для enduranceIcon (иконка выносливости) ---
   const enduranceIcon = characteristics.find((c) => c.id === 10012)?.icon || "";
 
+  // --- обработчик клика по пунктам главного меню ---
+  const handleMenuClick = async (item: MenuItem) => {
+    setSelectedMenuItem(item.name);
+    setSelectedMenuSequence(item.sequence);
+
+    if (item.sequence === 1) {
+      // Показ/обновление раздела "Воспитание"
+      setShowRaisingInteraction(false);
+      setIsLoading(true);
+      try {
+        await Promise.all([
+          loadTeachEnergy(),
+          loadCharacteristics(),
+          loadMonsterRoom(),
+          loadImpacts(),
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
   // --- UI ---
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
@@ -764,13 +794,13 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Окно ошибок (в том числе при провале всех 4 попыток любого метода) */}
+      {/* Окно ошибок */}
       {error && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[120]">
           <div className="bg-white p-6 rounded shadow-lg max-w-md w-[90%]">
             <div className="text-red-500 text-center mb-4">{error}</div>
             <button
-              onClick={closeError}
+              onClick={() => setError("")}
               className="bg-purple-500 text-white px-4 py-2 rounded w-full"
             >
               OK
@@ -792,7 +822,7 @@ const App: React.FC = () => {
               className={`flex items-center space-x-2 p-2 cursor-pointer ${
                 selectedMenuItem === item.name ? "bg-purple-800" : ""
               }`}
-              onClick={() => setSelectedMenuItem(item.name)}
+              onClick={() => handleMenuClick(item)}
             >
               <img src={item.iconURL} alt={item.name} className="w-8 h-8" />
               <span>{item.name}</span>
@@ -828,11 +858,10 @@ const App: React.FC = () => {
         />
       )}
 
-      {!showRaisingInteraction && selectedMenuItem && (
+      {/* Раздел "Воспитание" — sequence=1 */}
+      {!showRaisingInteraction && selectedMenuSequence === 1 && (
         <div className="p-4">
           {/* БЛОК С ПЕРЕКЛЮЧАТЕЛЕМ МОНСТРОВ И ЭНЕРГИЕЙ */}
-          {/* На узком экране: один под другим (энергия ПОД переключателем).
-              На md и шире: в ряд. */}
           <div className="flex flex-col gap-2 md:flex-row md:justify-between">
             {/* Переключатель монстров */}
             <div className="flex space-x-1 overflow-x-auto pb-1">
@@ -1026,6 +1055,12 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Простые визуальные заглушки для sequence 2/3/4 */}
+      {!showRaisingInteraction && selectedMenuSequence === 2 && <Arena />}
+      {!showRaisingInteraction && selectedMenuSequence === 3 && <Invent />}
+      {!showRaisingInteraction && selectedMenuSequence === 4 && <Account />}
+
       <SpeedInsights />
     </div>
   );
