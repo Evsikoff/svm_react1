@@ -282,23 +282,21 @@ const EnergyPanel: React.FC<EnergyProps> = ({ current, max, regenHint }) => {
 
   return (
     <div className="w-full">
-      {/* DESKTOP: узкая, вертикальная версия */}
+      {/* DESKTOP: узкая, вертикальная, компактная версия */}
       <div className="hidden md:block">
-        <div className="mx-auto w-full max-w-[560px] rounded-xl border border-purple-200 bg-white/70 shadow-sm p-4">
-          <div className="flex flex-col items-stretch gap-3">
+        <div className="mx-auto w-full max-w-[200px] rounded-xl border border-purple-200 bg-white/70 shadow-sm p-2">
+          <div className="flex flex-col items-stretch gap-2">
             {/* Иконка и заголовок по центру */}
             <div className="flex items-center justify-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
                 <svg
                   viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
+                  width="18"
+                  height="18"
                   aria-hidden="true"
+                  fill="currentColor"
                 >
-                  <path
-                    d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"
-                    fill="currentColor"
-                  ></path>
+                  <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"></path>
                 </svg>
               </span>
               <span className="text-sm font-semibold text-gray-800">
@@ -1091,7 +1089,7 @@ const App: React.FC = () => {
       {!showRaisingInteraction && selectedMenuSequence === 1 && (
         <div className="p-4">
           {/* БЛОК С ПЕРЕКЛЮЧАТЕЛЕМ МОНСТРОВ И ЭНЕРГИЕЙ */}
-          <div className="flex flex-col gap-2 md:flex-row md:justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:justify-between">
             {/* Переключатель монстров */}
             <div className="flex space-x-1 overflow-x-auto pb-1">
               {monsters.map((monster, index) => (
@@ -1117,17 +1115,28 @@ const App: React.FC = () => {
             </div>
 
             {/* Энергия на воспитательные взаимодействия */}
-            <div className="flex items-center space-x-2 border border-gray-300 p-2 bg-purple-50 w-full md:w-auto">
-              <img
-                src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
-                alt="Teach Energy"
-                className="w-8 h-8"
-              />
-              <span>Энергия: {teachEnergy}</span>
+            <div className="flex flex-col justify-between h-full items-center border border-gray-300 p-3 bg-purple-50 w-full md:w-auto md:min-w-[200px]">
+              {/* Группа для иконки и значения энергии */}
+              <div className="flex items-center gap-2">
+                <img
+                  src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
+                  alt="Teach Energy"
+                  className="w-8 h-8"
+                />
+                <span className="font-semibold text-lg text-purple-800">
+                  Энергия: {teachEnergy}
+                </span>
+              </div>
+
+              {/* Таймер */}
               {teachEnergy < 10 && (
-                <span>До пополнения: {formatTimer(timer)}</span>
+                <span className="text-sm text-gray-600">
+                  До пополнения: {formatTimer(timer)}
+                </span>
               )}
-              <button className="bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed">
+
+              {/* Кнопка */}
+              <button className="w-full mt-2 bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed">
                 Пополнить энергию
               </button>
             </div>
