@@ -1058,7 +1058,9 @@ const App: React.FC = () => {
 
       {/* Простые визуальные заглушки для sequence 2/3/4 */}
       {!showRaisingInteraction && selectedMenuSequence === 2 && <Arena />}
-      {!showRaisingInteraction && selectedMenuSequence === 3 && <Invent />}
+      {!showRaisingInteraction && selectedMenuSequence === 3 && (
+        <Invent userId={userId} />
+      )}
       {!showRaisingInteraction && selectedMenuSequence === 4 && <Account />}
 
       <SpeedInsights />
