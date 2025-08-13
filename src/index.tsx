@@ -4,7 +4,7 @@ import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import RaisingInteraction from "./RaisingInteraction";
 import Arena from "./Arena";
-import Invent from "./Invent";
+import Shop from "./Shop";
 import Account from "./Account";
 
 // Автоматическое поджатие текста под ширину контейнера (в одну строку)
@@ -1297,7 +1297,7 @@ const App: React.FC = () => {
       {/* Простые визуальные заглушки для sequence 2/3/4 */}
       {!showRaisingInteraction && selectedMenuSequence === 2 && <Arena />}
       {!showRaisingInteraction && selectedMenuSequence === 3 && (
-        <Invent userId={userId} />
+        <Shop userId={userId} />
       )}
       {!showRaisingInteraction && selectedMenuSequence === 4 && <Account />}
 

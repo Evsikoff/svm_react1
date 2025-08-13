@@ -1,4 +1,4 @@
-// Invent.tsx — фрейм «Инвентарь» с «Золотыми монетами» и «Магазином»
+// Shop.tsx — фрейм «Инвентарь» с «Золотыми монетами» и «Магазином»
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
@@ -51,7 +51,7 @@ async function withRetry<T>(
 }
 
 // ===== Компонент =====
-const Invent: React.FC<Props> = ({ userId }) => {
+const Shop: React.FC<Props> = ({ userId }) => {
   // --- Кошелёк ---
   const [money, setMoney] = useState<number>(0);
   const [moneyLoading, setMoneyLoading] = useState(true);
@@ -345,4 +345,4 @@ const Invent: React.FC<Props> = ({ userId }) => {
   );
 };
 
-export default Invent;
+export default Shop;
