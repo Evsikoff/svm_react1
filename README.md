@@ -1,2 +1,2 @@
-# svm_react1
+# Симулятор воспитания монстра
 Created with CodeSandbox
