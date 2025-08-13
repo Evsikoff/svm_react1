@@ -210,7 +210,7 @@ const Invent: React.FC<Props> = ({ userId }) => {
             />
             <div className="flex-1 min-w-0">
               <div className="text-sm text-yellow-800/80">Золотые монеты</div>
-              <div className="text-3xl font-extrabold text-yellow-800 leading-tight truncate">
+              <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-yellow-800 leading-tight break-all">
                 {moneyFormatted}
               </div>
             </div>
