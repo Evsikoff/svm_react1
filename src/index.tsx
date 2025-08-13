@@ -1299,7 +1299,7 @@ const App: React.FC = () => {
       {!showRaisingInteraction && selectedMenuSequence === 3 && (
         <Shop userId={userId} />
       )}
-      {!showRaisingInteraction && selectedMenuSequence === 4 && <Account />}
+      {!showRaisingInteraction && selectedMenuSequence === 5 && <Account />}
 
       <SpeedInsights />
     </div>
