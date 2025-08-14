@@ -385,6 +385,13 @@ const EnergyPanel: React.FC<EnergyProps> = ({ current, max, regenHint }) => {
   );
 };
 
+// Функция для сброса кеша изображений
+const invalidateImageCache = (url: string): string => {
+  const timestamp = Date.now();
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}t=${timestamp}`;
+};
+
 const App: React.FC = () => {
   // ---- state ----
   const [userId, setUserId] = useState<number | null>(null);
@@ -581,25 +588,30 @@ const App: React.FC = () => {
         "Ошибка при загрузке характеристик монстра"
       ),
 
-    monsterroom: async (
-      monsterIdParam: number,
-      characteristicsParam: MonsterCharacteristic[]
-    ) =>
+    // Обновленный API для загрузки комнаты монстра с новым контрактом
+    monsterroom: async (monsterIdParam: number) =>
       withRetry(
         async () => {
           const response = await axios.post<MonsterRoomResponse>(
             "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
             {
               monsterId: monsterIdParam,
-              monstercharacteristics: characteristicsParam.map((c) => ({
-                id: c.id,
-                value: c.value,
-              })),
             }
           );
-          setMonsterImage(response.data.monsterimage);
-          setRoomImage(response.data.roomimage);
-          setRoomItems(response.data.roomitems || []);
+
+          // Применяем invalidateImageCache для всех изображений
+          setMonsterImage(invalidateImageCache(response.data.monsterimage));
+          setRoomImage(invalidateImageCache(response.data.roomimage));
+
+          // Применяем invalidateImageCache для предметов комнаты
+          const itemsWithCacheBust = (response.data.roomitems || []).map(
+            (item) => ({
+              ...item,
+              spriteUrl: invalidateImageCache(item.spriteUrl),
+            })
+          );
+          setRoomItems(itemsWithCacheBust);
+
           return response.data;
         },
         (d) => !!d && !!d.monsterimage && !!d.roomimage,
@@ -677,15 +689,12 @@ const App: React.FC = () => {
         markTaskDone("teachenergy");
 
         // 6) characteristics
-        const charRes = await api.characteristics(selectedMonsterLocal);
+        await api.characteristics(selectedMonsterLocal);
         if (cancelled) return;
         markTaskDone("characteristics");
 
-        // 7) monster room (нужны характеристики)
-        await api.monsterroom(
-          selectedMonsterLocal,
-          charRes.monstercharacteristics || []
-        );
+        // 7) monster room (больше не нужны характеристики)
+        await api.monsterroom(selectedMonsterLocal);
         if (cancelled) return;
         markTaskDone("monsterroom");
 
@@ -790,9 +799,9 @@ const App: React.FC = () => {
 
   // Комната монстра
   const loadMonsterRoom = async () => {
-    if (!selectedMonsterId || characteristics.length === 0) return;
+    if (!selectedMonsterId) return;
     try {
-      await api.monsterroom(selectedMonsterId, characteristics);
+      await api.monsterroom(selectedMonsterId);
     } catch {
       /* ошибка уже показана */
     }
@@ -807,13 +816,15 @@ const App: React.FC = () => {
       /* ошибка уже показана */
     }
   };
+
+  // Загрузка данных монстра при смене selectedMonsterId
   useEffect(() => {
     if (booting || !selectedMonsterId) return;
 
     const loadMonsterData = async () => {
-      setIsMonsterLoading(true); // Показываем лоадер
+      setIsMonsterLoading(true);
       try {
-        // Последовательная загрузка: сначала характеристики, затем комната, затем взаимодействия
+        // Последовательная загрузка: характеристики, комната, взаимодействия
         await loadCharacteristics();
         await loadMonsterRoom();
         await loadImpacts();
@@ -821,12 +832,13 @@ const App: React.FC = () => {
         console.error("Ошибка при загрузке данных монстра:", error);
         setError("Ошибка при загрузке данных монстра");
       } finally {
-        setIsMonsterLoading(false); // Скрываем лоадер
+        setIsMonsterLoading(false);
       }
     };
 
     loadMonsterData();
-  }, [selectedMonsterId, booting]); // Зависимость только от selectedMonsterId — внутри async всё последовательно
+  }, [selectedMonsterId, booting]);
+
   // --- клик по взаимодействию ---
   const handleImpactClick = async (impact: MonsterImpact) => {
     if (
@@ -980,6 +992,19 @@ const App: React.FC = () => {
     }
   };
 
+  // --- обработчик переключения монстра ---
+  const handleMonsterSwitch = (newMonsterId: number) => {
+    if (newMonsterId === selectedMonsterId) return;
+
+    // Сбрасываем старые данные изображений
+    setMonsterImage("");
+    setRoomImage("");
+    setRoomItems([]);
+    setRoomItemSizes({});
+
+    setSelectedMonsterId(newMonsterId);
+  };
+
   // --- UI ---
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
@@ -1115,7 +1140,7 @@ const App: React.FC = () => {
                       ? "border-2 border-purple-500"
                       : ""
                   }`}
-                  onClick={() => setSelectedMonsterId(monstersId[index])}
+                  onClick={() => handleMonsterSwitch(monstersId[index])}
                 >
                   <img
                     src={monster.face}
