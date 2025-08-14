@@ -407,6 +407,7 @@ const App: React.FC = () => {
   >([]);
   const [impacts, setImpacts] = useState<MonsterImpact[]>([]);
   const [monsterImage, setMonsterImage] = useState<string>("");
+  const [isMonsterLoading, setIsMonsterLoading] = useState<boolean>(false);
   const [roomImage, setRoomImage] = useState<string>("");
   const [roomItems, setRoomItems] = useState<RoomItem[]>([]);
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
@@ -786,10 +787,6 @@ const App: React.FC = () => {
       /* ошибка уже показана */
     }
   };
-  useEffect(() => {
-    if (booting) return;
-    loadCharacteristics();
-  }, [selectedMonsterId, booting]);
 
   // Комната монстра
   const loadMonsterRoom = async () => {
@@ -800,10 +797,6 @@ const App: React.FC = () => {
       /* ошибка уже показана */
     }
   };
-  useEffect(() => {
-    if (booting) return;
-    loadMonsterRoom();
-  }, [selectedMonsterId, characteristics, booting]);
 
   // Взаимодействия
   const loadImpacts = async () => {
@@ -815,10 +808,25 @@ const App: React.FC = () => {
     }
   };
   useEffect(() => {
-    if (booting) return;
-    loadImpacts();
-  }, [selectedMonsterId, booting]);
+    if (booting || !selectedMonsterId) return;
 
+    const loadMonsterData = async () => {
+      setIsMonsterLoading(true); // Показываем лоадер
+      try {
+        // Последовательная загрузка: сначала характеристики, затем комната, затем взаимодействия
+        await loadCharacteristics();
+        await loadMonsterRoom();
+        await loadImpacts();
+      } catch (error) {
+        console.error("Ошибка при загрузке данных монстра:", error);
+        setError("Ошибка при загрузке данных монстра");
+      } finally {
+        setIsMonsterLoading(false); // Скрываем лоадер
+      }
+    };
+
+    loadMonsterData();
+  }, [selectedMonsterId, booting]); // Зависимость только от selectedMonsterId — внутри async всё последовательно
   // --- клик по взаимодействию ---
   const handleImpactClick = async (impact: MonsterImpact) => {
     if (
@@ -912,7 +920,13 @@ const App: React.FC = () => {
           sizes[item.id] = { width: img.width, height: img.height };
           resolve();
         };
-        img.onerror = () => resolve();
+        img.onerror = () => {
+          console.warn(
+            `Ошибка загрузки спрайта для предмета ${item.id}: ${item.spriteUrl}`
+          );
+          sizes[item.id] = { width: 0, height: 0 }; // Fallback, чтобы не скрывать полностью
+          resolve();
+        };
         img.src = item.spriteUrl;
       });
     });
@@ -1154,62 +1168,71 @@ const App: React.FC = () => {
                     background: "#fff",
                   }}
                 >
-                  <img
-                    src={roomImage}
-                    alt="Room"
-                    ref={roomBgRef}
-                    className="w-full h-full object-contain"
-                    style={{
-                      display: "block",
-                      zIndex: 1,
-                      position: "relative",
-                      pointerEvents: "none",
-                      background: "#fff",
-                    }}
-                    onLoad={() => {
-                      if (roomBgRef.current) {
-                        setRoomBgSize({
-                          width: roomBgRef.current.clientWidth,
-                          height: roomBgRef.current.clientHeight,
-                        });
-                      }
-                    }}
-                  />
-                  {/* Предметы */}
-                  {roomItems.map((item) => {
-                    const size = roomItemSizes[item.id];
-                    if (!size) return null;
-                    const bgW = roomBgSize.width;
-                    const bgH = roomBgSize.height;
-                    const cx = (item.xaxis / 100) * bgW;
-                    const cy = (item.yaxis / 100) * bgH;
-                    const leftPx = cx - size.width / 2;
-                    const topPx = cy - size.height / 2;
-                    return (
+                  {isMonsterLoading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+                      <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  ) : (
+                    <>
                       <img
-                        key={item.id}
-                        src={item.spriteUrl}
-                        alt={item.name}
-                        title={item.name}
+                        src={roomImage}
+                        alt="Room"
+                        ref={roomBgRef}
+                        className="w-full h-full object-contain"
                         style={{
-                          position: "absolute",
-                          left: `${leftPx}px`,
-                          top: `${topPx}px`,
-                          width: `${size.width}px`,
-                          height: `${size.height}px`,
-                          zIndex: 5,
-                          pointerEvents: "auto",
+                          display: "block",
+                          zIndex: 1,
+                          position: "relative",
+                          pointerEvents: "none",
+                          background: "#fff",
+                        }}
+                        onLoad={() => {
+                          if (roomBgRef.current) {
+                            setRoomBgSize({
+                              width: roomBgRef.current.clientWidth,
+                              height: roomBgRef.current.clientHeight,
+                            });
+                          }
                         }}
                       />
-                    );
-                  })}
-                  {/* Монстр поверх */}
-                  <img
-                    src={monsterImage}
-                    alt="Monster"
-                    className="absolute bottom-[10%] left-1/2 w-1/2 transform -translate-x-1/2"
-                    style={{ zIndex: 10 }}
-                  />
+                      {/* Предметы */}
+                      {roomItems.map((item) => {
+                        const size = roomItemSizes[item.id];
+                        if (!size || size.width === 0 || size.height === 0)
+                          return null; // Скрываем, если размер не загружен или fallback
+                        const bgW = roomBgSize.width;
+                        const bgH = roomBgSize.height;
+                        const cx = (item.xaxis / 100) * bgW;
+                        const cy = (item.yaxis / 100) * bgH;
+                        const leftPx = cx - size.width / 2;
+                        const topPx = cy - size.height / 2;
+                        return (
+                          <img
+                            key={item.id}
+                            src={item.spriteUrl}
+                            alt={item.name}
+                            title={item.name}
+                            style={{
+                              position: "absolute",
+                              left: `${leftPx}px`,
+                              top: `${topPx}px`,
+                              width: `${size.width}px`,
+                              height: `${size.height}px`,
+                              zIndex: 5,
+                              pointerEvents: "auto",
+                            }}
+                          />
+                        );
+                      })}
+                      {/* Монстр поверх */}
+                      <img
+                        src={monsterImage}
+                        alt="Monster"
+                        className="absolute bottom-[10%] left-1/2 w-1/2 transform -translate-x-1/2"
+                        style={{ zIndex: 10 }}
+                      />
+                    </>
+                  )}
                 </div>
               )}
               <div className="mt-4 space-y-2 p-2">
