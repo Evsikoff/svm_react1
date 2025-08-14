@@ -1,396 +1,42 @@
-import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from "react";
+import { createRoot } from "react-dom/client";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+
+// Существующие компоненты (не меняем)
 import RaisingInteraction from "./RaisingInteraction";
 import Arena from "./Arena";
 import Shop from "./Shop";
 import Account from "./Account";
 import Inventory from "./Inventory";
 
-// Автоматическое поджатие текста под ширину контейнера (в одну строку)
-// Автоматическое поджатие текста: сначала в одну строку,
-// если дошли до минимума и всё равно не влезло — включаем переносы.
-const AutoFitText: React.FC<{
-  children: React.ReactNode;
-  min?: number;
-  max?: number;
-  className?: string;
-}> = ({ children, min = 10, max = 16, className }) => {
-  const ref = useRef<HTMLDivElement>(null);
+// Новые компоненты
+import LoadingScreen from "./components/LoadingScreen";
+import ErrorModal from "./components/ErrorModal";
+import Spinner from "./components/Spinner";
+import MobileMainMenu from "./components/MobileMainMenu";
+import DesktopMenu from "./components/DesktopMenu";
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+// Типы
+import {
+  MenuItem,
+  Monster,
+  MonsterCharacteristic,
+  MonsterImpact,
+  RoomItem,
+  ImpactResponse,
+  BootTask,
+  BootTaskKey,
+} from "./types";
 
-    // Сброс стилей
-    el.style.whiteSpace = "nowrap";
-    el.style.overflow = "hidden";
-    el.style.fontSize = `${max}px`;
-    el.style.lineHeight = "1.1";
-    el.style.display = "block";
-    el.style.width = "100%";
+// Константы
+import { BOOT_TASKS_ORDER, MENU_SEQUENCES, IMAGES } from "./constants";
 
-    // Этап 1: ужимаем в одну строку
-    let font = max;
-    while (font > min && el.scrollWidth > el.clientWidth) {
-      font -= 1;
-      el.style.fontSize = `${font}px`;
-    }
+// Сервисы
+import { ApiService } from "./services/api";
 
-    // Этап 2: если достигли минимума и текст всё ещё шире контейнера,
-    // включаем переносы строк с дефисами
-    if (el.scrollWidth > el.clientWidth) {
-      el.style.whiteSpace = "normal";
-      (el.style as any).overflowWrap = "anywhere"; // страхует длинные слова
-      (el.style as any).wordBreak = "break-word";
-      (el.style as any).hyphens = "auto";
-    }
-  }, [children, min, max]);
-
-  return (
-    <div ref={ref} className={`w-full text-center ${className || ""}`}>
-      {children}
-    </div>
-  );
-};
-
-// --- типы данных ---
-interface InitResponse {
-  userId: number;
-  monstersId: number[];
-  newUser: boolean;
-}
-interface MenuItem {
-  name: string;
-  sequence: number;
-  iconURL: string;
-  index: boolean;
-}
-interface MainMenuResponse {
-  menuitems: MenuItem[];
-}
-interface NotificationResponse {
-  notificationquantity: number;
-}
-interface Monster {
-  face: string;
-  name: string;
-  sequence: number;
-  index: boolean;
-}
-interface MonstersResponse {
-  monsters: Monster[];
-}
-interface TeachEnergyResponse {
-  teachenergy: number;
-  nextfreereplenishment: string;
-}
-interface MonsterCharacteristic {
-  id: number;
-  value: number;
-  icon: string;
-  name: string;
-}
-interface MonsterCharacteristicsResponse {
-  monstercharacteristics: MonsterCharacteristic[];
-}
-interface MonsterImpact {
-  id: number;
-  image: string;
-  name: string;
-  comment: string;
-  available: boolean;
-  energyprice: number;
-  minendurance?: number;
-}
-interface MonsterImpactsResponse {
-  monsterimpacts: MonsterImpact[];
-}
-
-interface RoomItem {
-  id: number;
-  name: string;
-  spriteUrl: string;
-  placement: string;
-  xaxis: number;
-  yaxis: number;
-}
-
-interface MonsterRoomResponse {
-  monsterimage: string;
-  roomimage: string;
-  roomitems: RoomItem[];
-}
-
-interface InventoryItem {
-  inventoryid: number;
-  inventoryname: string;
-  inventoryimage: string;
-  inventorydescription: string;
-  quantity: number;
-}
-
-interface ImpactResponse {
-  errortext: string;
-  video?: string;
-  text?: string;
-  characteristicschanges?: {
-    characteristicsid: number;
-    name: string;
-    amount: number;
-  }[];
-  inventoryitems?: InventoryItem[];
-}
-
-// --- вспомогательные типы для полосы загрузки ---
-type BootTaskKey =
-  | "init"
-  | "mainmenu"
-  | "notifications"
-  | "monsters"
-  | "teachenergy"
-  | "characteristics"
-  | "monsterroom"
-  | "impacts";
-
-type BootTask = { key: BootTaskKey; label: string; done: boolean };
-
-const BOOT_TASKS_ORDER: BootTask[] = [
-  { key: "init", label: "Инициализация", done: false },
-  { key: "mainmenu", label: "Главное меню", done: false },
-  { key: "notifications", label: "Уведомления", done: false },
-  { key: "monsters", label: "Монстры", done: false },
-  { key: "teachenergy", label: "Энергия", done: false },
-  { key: "characteristics", label: "Характеристики", done: false },
-  { key: "monsterroom", label: "Комната и монстр", done: false },
-  { key: "impacts", label: "Взаимодействия", done: false },
-];
-
-const MobileMainMenu: React.FC<{
-  items: MenuItem[];
-  selectedName: string | null;
-  notificationCount: number;
-  onSelect: (item: MenuItem) => void;
-  onToggleNotifications: () => void;
-}> = ({
-  items,
-  selectedName,
-  notificationCount,
-  onSelect,
-  onToggleNotifications,
-}) => {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="md:hidden">
-      {/* Верхняя компактная панель */}
-      <div className="flex items-center justify-between bg-purple-600 text-white px-3 py-2">
-        <button
-          aria-label="Открыть меню"
-          className="p-2 active:scale-95"
-          onClick={() => setOpen(true)}
-        >
-          {/* Иконка «бургер» */}
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M3 6h18M3 12h18M3 18h18"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-
-        <div className="text-lg font-semibold truncate px-2">
-          {selectedName ?? "Меню"}
-        </div>
-
-        <div className="relative">
-          <img
-            src="https://storage.yandexcloud.net/svm/img/bell.png"
-            alt="Уведомления"
-            className="w-7 h-7 cursor-pointer"
-            onClick={onToggleNotifications}
-          />
-          {notificationCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full px-1.5 text-xs leading-5">
-              {notificationCount}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Затемнение + «шторка» снизу */}
-      {open && (
-        <div className="fixed inset-0 z-[90]">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4">
-            <div className="mx-auto mb-3 h-1.5 w-12 bg-gray-300 rounded-full" />
-            <div className="grid grid-cols-3 gap-3">
-              {items.map((item) => (
-                <button
-                  key={item.name}
-                  className={`flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95 ${
-                    selectedName === item.name
-                      ? "border-purple-600 bg-purple-50"
-                      : "border-gray-200 bg-gray-50"
-                  }`}
-                  onClick={() => {
-                    onSelect(item);
-                    setOpen(false);
-                  }}
-                >
-                  <img
-                    src={item.iconURL}
-                    alt={item.name}
-                    className="w-10 h-10 object-contain"
-                  />
-                  <span className="text-xs text-gray-800 text-center">
-                    {item.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <button
-              className="mt-4 w-full rounded-xl bg-purple-600 text-white py-2 font-medium active:scale-95"
-              onClick={() => setOpen(false)}
-            >
-              Закрыть
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-type EnergyProps = {
-  current: number;
-  max: number;
-  regenHint?: string; // например: "До пополнения: 04:12"
-};
-
-const EnergyPanel: React.FC<EnergyProps> = ({ current, max, regenHint }) => {
-  const pct = Math.max(
-    0,
-    Math.min(100, Math.round((current / Math.max(1, max)) * 100))
-  );
-
-  return (
-    <div className="w-full">
-      {/* DESKTOP: узкая, вертикальная, компактная версия */}
-      <div className="hidden md:block">
-        <div className="mx-auto w-full max-w-[200px] rounded-xl border border-purple-200 bg-white/70 shadow-sm p-2">
-          <div className="flex flex-col items-stretch gap-2">
-            {/* Иконка и заголовок по центру */}
-            <div className="flex items-center justify-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  aria-hidden="true"
-                  fill="currentColor"
-                >
-                  <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"></path>
-                </svg>
-              </span>
-              <span className="text-sm font-semibold text-gray-800">
-                Энергия
-              </span>
-            </div>
-
-            {/* Текущее значение */}
-            <div className="text-center text-sm tabular-nums text-gray-900">
-              {current} / {max}
-            </div>
-
-            {/* Узкий прогресс-бар */}
-            <div
-              className="h-2 w-full rounded-full bg-gray-200"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={max}
-              aria-valuenow={current}
-              aria-label="Энергия"
-            >
-              <div
-                className="h-2 rounded-full bg-purple-500 transition-[width] duration-300"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-
-            {/* Подсказка (таймер) — мелко и нейтрально */}
-            {regenHint && (
-              <div className="text-center text-[11px] text-gray-500">
-                {regenHint}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* MOBILE: супер-компактная карточка */}
-      <div className="md:hidden">
-        <div className="mx-auto w-full rounded-lg border border-purple-200 bg-white p-2 shadow-sm">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-purple-100">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="16"
-                  height="16"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"
-                    fill="currentColor"
-                  ></path>
-                </svg>
-              </span>
-              <span className="text-xs font-medium text-gray-800">Энергия</span>
-            </div>
-            <span className="text-xs tabular-nums text-gray-900">
-              {current}/{max}
-            </span>
-          </div>
-
-          <div
-            className="mt-2 h-1.5 w-full rounded-full bg-gray-200"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={max}
-            aria-valuenow={current}
-            aria-label="Энергия"
-          >
-            <div
-              className="h-1.5 rounded-full bg-purple-500 transition-[width] duration-300"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-
-          {regenHint && (
-            <div className="mt-1 text-[10px] leading-4 text-gray-500">
-              {regenHint}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Функция для сброса кеша изображений
-const invalidateImageCache = (url: string): string => {
-  const timestamp = Date.now();
-  const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}t=${timestamp}`;
-};
+// Утилиты
+import { formatTimer } from "./utils";
 
 const App: React.FC = () => {
   // ---- state ----
@@ -425,8 +71,7 @@ const App: React.FC = () => {
   const [interactionData, setInteractionData] = useState<ImpactResponse | null>(
     null
   );
-
-  const [isLoading, setIsLoading] = useState<boolean>(false); // спиннер для взаимодействий
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // --- состояние экрана загрузки ---
   const [booting, setBooting] = useState<boolean>(true);
@@ -434,204 +79,8 @@ const App: React.FC = () => {
     BOOT_TASKS_ORDER.map((t) => ({ ...t }))
   );
 
-  // Для хранения размеров каждой картинки-предмета (по id)
-  const [roomItemSizes, setRoomItemSizes] = useState<
-    Record<number, { width: number; height: number }>
-  >({});
-  // Для размеров фонового изображения комнаты
-  const roomBgRef = useRef<HTMLImageElement>(null);
-  const [roomBgSize, setRoomBgSize] = useState<{
-    width: number;
-    height: number;
-  }>({ width: 1, height: 1 }); // не 0 чтобы избежать деления на ноль
-
-  // -------- универсальная обёртка с повторами --------
-  async function withRetry<T>(
-    fn: () => Promise<T>,
-    isValid: (v: T) => boolean,
-    labelForError: string
-  ): Promise<T> {
-    let lastErr: any = null;
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      try {
-        const res = await fn();
-        // "ничего не выдал" — считаем невалидным
-        if (!isValid(res)) {
-          throw new Error("Пустой или некорректный ответ");
-        }
-        return res;
-      } catch (e) {
-        lastErr = e;
-        if (attempt < 4) {
-          // небольшая пауза между повторами
-          await new Promise((r) => setTimeout(r, 300));
-          continue;
-        }
-      }
-    }
-    // 4-я попытка провалилась — показываем уже разработанную ошибку
-    const text =
-      typeof lastErr?.message === "string"
-        ? `${labelForError}: ${lastErr.message}`
-        : `${labelForError}`;
-    setError(text);
-    setBooting(false);
-    throw lastErr;
-  }
-
-  // -------- методы загрузки --------
-  const api = {
-    init: async () =>
-      withRetry(
-        async () => {
-          const response = await axios.post<InitResponse>(
-            "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/init",
-            {
-              yandexUserId: "ajeksdnx-somerandomid-29112024",
-              yandexUserName: "Иван Петров",
-              yandexUserPhotoURL:
-                "https://avatars.yandex.net/get-yapic/12345/some-image-id/islands-200",
-            }
-          );
-          setUserId(response.data.userId);
-          setMonstersId(response.data.monstersId);
-          return response.data;
-        },
-        (d) =>
-          !!d && typeof d.userId === "number" && Array.isArray(d.monstersId),
-        "Ошибка при инициализации приложения"
-      ),
-
-    mainmenu: async (monstersIdParam: number[]) =>
-      withRetry(
-        async () => {
-          const response = await axios.post<MainMenuResponse>(
-            "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/mainmenu",
-            { monstersId: monstersIdParam }
-          );
-          const items = response.data.menuitems || [];
-          const indexItems = items.filter((item) => item.index);
-          if (indexItems.length > 1) {
-            throw new Error("Несколько пунктов меню с index=true");
-          }
-          const sortedItems = items.sort((a, b) => a.sequence - b.sequence);
-          setMenuItems(sortedItems);
-          const def = sortedItems.find((it) => it.index);
-          if (def) {
-            setSelectedMenuItem(def.name);
-            setSelectedMenuSequence(def.sequence);
-          }
-          return response.data;
-        },
-        (d) => !!d && Array.isArray(d.menuitems),
-        "Ошибка при загрузке главного меню"
-      ),
-
-    notifications: async (userIdParam: number) =>
-      withRetry(
-        async () => {
-          const response = await axios.get<NotificationResponse>(
-            `https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/notificationcounter?userId=${userIdParam}`
-          );
-          setNotificationCount(response.data.notificationquantity);
-          return response.data;
-        },
-        (d) => d != null && typeof d.notificationquantity === "number",
-        "Ошибка при загрузке уведомлений"
-      ),
-
-    monsters: async (monstersIdParam: number[]) =>
-      withRetry(
-        async () => {
-          const response = await axios.post<MonstersResponse>(
-            "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/monsters",
-            { monstersId: monstersIdParam }
-          );
-          const sorted = (response.data.monsters || []).sort(
-            (a, b) => a.sequence - b.sequence
-          );
-          setMonsters(sorted);
-          const def = sorted.findIndex((m) => m.index);
-          if (def >= 0) setSelectedMonsterId(monstersIdParam[def]);
-          return response.data;
-        },
-        (d) => !!d && Array.isArray(d.monsters),
-        "Ошибка при загрузке монстров"
-      ),
-
-    teachenergy: async (userIdParam: number) =>
-      withRetry(
-        async () => {
-          const response = await axios.post<TeachEnergyResponse>(
-            "https://functions.yandexcloud.net/d4ek0gg34e57hosr45u8",
-            { userId: userIdParam }
-          );
-          setTeachEnergy(response.data.teachenergy);
-          setNextReplenishment(response.data.nextfreereplenishment);
-          return response.data;
-        },
-        (d) => d != null && typeof d.teachenergy === "number",
-        "Ошибка при загрузке энергии"
-      ),
-
-    characteristics: async (monsterIdParam: number) =>
-      withRetry(
-        async () => {
-          const response = await axios.post<MonsterCharacteristicsResponse>(
-            "https://functions.yandexcloud.net/d4eja3aglipp5f8hfb73",
-            { monsterId: monsterIdParam }
-          );
-          setCharacteristics(response.data.monstercharacteristics || []);
-          return response.data;
-        },
-        (d) => !!d && Array.isArray(d.monstercharacteristics),
-        "Ошибка при загрузке характеристик монстра"
-      ),
-
-    // Обновленный API для загрузки комнаты монстра с новым контрактом
-    monsterroom: async (monsterIdParam: number) =>
-      withRetry(
-        async () => {
-          const response = await axios.post<MonsterRoomResponse>(
-            "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
-            {
-              monsterId: monsterIdParam,
-            }
-          );
-
-          // Применяем invalidateImageCache для всех изображений
-          setMonsterImage(invalidateImageCache(response.data.monsterimage));
-          setRoomImage(invalidateImageCache(response.data.roomimage));
-
-          // Применяем invalidateImageCache для предметов комнаты
-          const itemsWithCacheBust = (response.data.roomitems || []).map(
-            (item) => ({
-              ...item,
-              spriteUrl: invalidateImageCache(item.spriteUrl),
-            })
-          );
-          setRoomItems(itemsWithCacheBust);
-
-          return response.data;
-        },
-        (d) => !!d && !!d.monsterimage && !!d.roomimage,
-        "Ошибка при загрузке изображений монстра и комнаты"
-      ),
-
-    impacts: async (monsterIdParam: number) =>
-      withRetry(
-        async () => {
-          const response = await axios.post<MonsterImpactsResponse>(
-            "https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj",
-            { monsterId: monsterIdParam }
-          );
-          setImpacts(response.data.monsterimpacts || []);
-          return response.data;
-        },
-        (d) => !!d && Array.isArray(d.monsterimpacts),
-        "Ошибка при загрузке взаимодействий"
-      ),
-  };
+  // Создаем экземпляр API сервиса
+  const apiService = new ApiService((error) => setError(error));
 
   // --- отметка выполненной задачи на прогресс-баре ---
   const markTaskDone = (key: BootTaskKey) => {
@@ -650,62 +99,85 @@ const App: React.FC = () => {
         setError("");
 
         // 1) init
-        const initRes = await api.init();
+        const initRes = await apiService.init();
         if (cancelled) return;
+        setUserId(initRes.userId);
+        setMonstersId(initRes.monstersId);
         markTaskDone("init");
 
         // 2) main menu
-        await api.mainmenu(initRes.monstersId);
+        const mainMenuRes = await apiService.getMainMenu(initRes.monstersId);
         if (cancelled) return;
+        const items = mainMenuRes.menuitems || [];
+        const sortedItems = items.sort((a, b) => a.sequence - b.sequence);
+        setMenuItems(sortedItems);
+        const def = sortedItems.find((it) => it.index);
+        if (def) {
+          setSelectedMenuItem(def.name);
+          setSelectedMenuSequence(def.sequence);
+        }
         markTaskDone("mainmenu");
 
         // 3) notifications
-        await api.notifications(initRes.userId);
+        const notificationRes = await apiService.getNotifications(
+          initRes.userId
+        );
         if (cancelled) return;
+        setNotificationCount(notificationRes.notificationquantity);
         markTaskDone("notifications");
 
         // 4) monsters
-        const monstersRes = await api.monsters(initRes.monstersId);
+        const monstersRes = await apiService.getMonsters(initRes.monstersId);
         if (cancelled) return;
-        markTaskDone("monsters");
-
-        // определяем выбранного монстра
+        const sorted = (monstersRes.monsters || []).sort(
+          (a, b) => a.sequence - b.sequence
+        );
+        setMonsters(sorted);
+        const def2 = sorted.findIndex((m) => m.index);
         let selectedMonsterLocal: number | null = null;
-        if (Array.isArray(monstersRes.monsters)) {
-          const idx = monstersRes.monsters.findIndex((m) => m.index);
-          selectedMonsterLocal =
-            idx >= 0 ? initRes.monstersId[idx] : initRes.monstersId[0];
+        if (def2 >= 0) {
+          selectedMonsterLocal = initRes.monstersId[def2];
         } else {
           selectedMonsterLocal = initRes.monstersId[0];
         }
+        setSelectedMonsterId(selectedMonsterLocal);
+        markTaskDone("monsters");
 
         if (selectedMonsterLocal == null) {
           throw new Error("Не удалось определить выбранного монстра");
         }
 
         // 5) teach energy
-        await api.teachenergy(initRes.userId);
+        const energyRes = await apiService.getTeachEnergy(initRes.userId);
         if (cancelled) return;
+        setTeachEnergy(energyRes.teachenergy);
+        setNextReplenishment(energyRes.nextfreereplenishment);
         markTaskDone("teachenergy");
 
         // 6) characteristics
-        await api.characteristics(selectedMonsterLocal);
+        const characteristicsRes = await apiService.getCharacteristics(
+          selectedMonsterLocal
+        );
         if (cancelled) return;
+        setCharacteristics(characteristicsRes.monstercharacteristics || []);
         markTaskDone("characteristics");
 
-        // 7) monster room (больше не нужны характеристики)
-        await api.monsterroom(selectedMonsterLocal);
+        // 7) monster room
+        const roomRes = await apiService.getMonsterRoom(selectedMonsterLocal);
         if (cancelled) return;
+        setMonsterImage(roomRes.monsterimage);
+        setRoomImage(roomRes.roomimage);
+        setRoomItems(roomRes.roomitems || []);
         markTaskDone("monsterroom");
 
         // 8) impacts
-        await api.impacts(selectedMonsterLocal);
+        const impactsRes = await apiService.getImpacts(selectedMonsterLocal);
         if (cancelled) return;
+        setImpacts(impactsRes.monsterimpacts || []);
         markTaskDone("impacts");
 
         setBooting(false);
       } catch {
-        // setError уже выставлен в withRetry, тут просто убедимся, что загрузчик скрыт
         setBooting(false);
       }
     };
@@ -716,64 +188,11 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // --- дальнейшие эффекты (НЕ работают во время bootstrap, чтобы не было дублей) ---
-  // Главное меню (реакция на monstersId) — после бутстрапа может пригодиться при смене монстров
-  useEffect(() => {
-    if (booting) return;
-    if (monstersId.length === 0) return;
-    (async () => {
-      try {
-        await api.mainmenu(monstersId);
-      } catch {
-        /* ошибка уже показана */
-      }
-    })();
-  }, [monstersId, booting]);
-
-  // Уведомления — при наличии userId
-  useEffect(() => {
-    if (booting) return;
-    if (!userId) return;
-    (async () => {
-      try {
-        await api.notifications(userId);
-      } catch {
-        /* ошибка уже показана */
-      }
-    })();
-  }, [userId, booting]);
-
-  // Монстры — при смене monstersId
-  useEffect(() => {
-    if (booting) return;
-    if (monstersId.length === 0) return;
-    (async () => {
-      try {
-        await api.monsters(monstersId);
-      } catch {
-        /* ошибка уже показана */
-      }
-    })();
-  }, [monstersId, booting]);
-
-  // Энергия пользователя
-  const loadTeachEnergy = async () => {
-    if (!userId) return;
-    try {
-      await api.teachenergy(userId);
-    } catch {
-      /* ошибка уже показана */
-    }
-  };
-  useEffect(() => {
-    if (booting) return;
-    loadTeachEnergy();
-  }, [userId, booting]);
-
   // Таймер пополнения энергии
   useEffect(() => {
     if (booting) return;
     if (!nextReplenishment) return;
+
     const targetTime = new Date(nextReplenishment).getTime();
     const updateTimer = () => {
       const now = new Date().getTime();
@@ -787,33 +206,52 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [nextReplenishment, userId, booting]);
 
-  // Характеристики выбранного монстра
+  // Загрузка энергии пользователя
+  const loadTeachEnergy = async () => {
+    if (!userId) return;
+    try {
+      const energyRes = await apiService.getTeachEnergy(userId);
+      setTeachEnergy(energyRes.teachenergy);
+      setNextReplenishment(energyRes.nextfreereplenishment);
+    } catch {
+      // ошибка уже показана
+    }
+  };
+
+  // Загрузка характеристик выбранного монстра
   const loadCharacteristics = async () => {
     if (!selectedMonsterId) return;
     try {
-      await api.characteristics(selectedMonsterId);
+      const characteristicsRes = await apiService.getCharacteristics(
+        selectedMonsterId
+      );
+      setCharacteristics(characteristicsRes.monstercharacteristics || []);
     } catch {
-      /* ошибка уже показана */
+      // ошибка уже показана
     }
   };
 
-  // Комната монстра
+  // Загрузка комнаты монстра
   const loadMonsterRoom = async () => {
     if (!selectedMonsterId) return;
     try {
-      await api.monsterroom(selectedMonsterId);
+      const roomRes = await apiService.getMonsterRoom(selectedMonsterId);
+      setMonsterImage(roomRes.monsterimage);
+      setRoomImage(roomRes.roomimage);
+      setRoomItems(roomRes.roomitems || []);
     } catch {
-      /* ошибка уже показана */
+      // ошибка уже показана
     }
   };
 
-  // Взаимодействия
+  // Загрузка взаимодействий
   const loadImpacts = async () => {
     if (!selectedMonsterId) return;
     try {
-      await api.impacts(selectedMonsterId);
+      const impactsRes = await apiService.getImpacts(selectedMonsterId);
+      setImpacts(impactsRes.monsterimpacts || []);
     } catch {
-      /* ошибка уже показана */
+      // ошибка уже показана
     }
   };
 
@@ -824,10 +262,11 @@ const App: React.FC = () => {
     const loadMonsterData = async () => {
       setIsMonsterLoading(true);
       try {
-        // Последовательная загрузка: характеристики, комната, взаимодействия
-        await loadCharacteristics();
-        await loadMonsterRoom();
-        await loadImpacts();
+        await Promise.all([
+          loadCharacteristics(),
+          loadMonsterRoom(),
+          loadImpacts(),
+        ]);
       } catch (error) {
         console.error("Ошибка при загрузке данных монстра:", error);
         setError("Ошибка при загрузке данных монстра");
@@ -853,21 +292,18 @@ const App: React.FC = () => {
     let shouldOpenInteraction = false;
 
     try {
-      const response = await axios.post<ImpactResponse>(
-        "https://functions.yandexcloud.net/d4een4tv1fhjs9o05ogj",
-        {
-          monsterId: selectedMonsterId,
-          impactId: impact.id,
-          userId: userId,
-        }
+      const response = await apiService.executeImpact(
+        selectedMonsterId,
+        impact.id,
+        userId
       );
 
-      if (response.data.errortext) {
-        setError(response.data.errortext);
+      if (response.errortext) {
+        setError(response.errortext);
         return;
       }
 
-      setInteractionData(response.data);
+      setInteractionData(response);
       shouldOpenInteraction = true;
 
       // Подзагрузим связанные данные, пока крутится спиннер
@@ -882,17 +318,6 @@ const App: React.FC = () => {
         setShowRaisingInteraction(true);
       }
     }
-  };
-
-  const formatTimer = (timeInSeconds: number): string => {
-    const hours = Math.floor(timeInSeconds / 3600);
-    const minutes = Math.floor((timeInSeconds % 3600) / 60);
-    const seconds = timeInSeconds % 60;
-    const parts: string[] = [];
-    if (hours > 0) parts.push(`${hours} часов`);
-    if (minutes > 0 || hours > 0) parts.push(`${minutes} минут`);
-    parts.push(`${seconds} секунд`);
-    return parts.join(" ");
   };
 
   const closeError = () => {
@@ -917,65 +342,12 @@ const App: React.FC = () => {
     }
   };
 
-  // --- загрузка размеров спрайтов предметов ---
-  useEffect(() => {
-    if (roomItems.length === 0) {
-      setRoomItemSizes({});
-      return;
-    }
-    let isMounted = true;
-    const sizes: Record<number, { width: number; height: number }> = {};
-    const promises = roomItems.map((item) => {
-      return new Promise<void>((resolve) => {
-        const img = new window.Image();
-        img.onload = () => {
-          sizes[item.id] = { width: img.width, height: img.height };
-          resolve();
-        };
-        img.onerror = () => {
-          console.warn(
-            `Ошибка загрузки спрайта для предмета ${item.id}: ${item.spriteUrl}`
-          );
-          sizes[item.id] = { width: 0, height: 0 }; // Fallback, чтобы не скрывать полностью
-          resolve();
-        };
-        img.src = item.spriteUrl;
-      });
-    });
-    Promise.all(promises).then(() => {
-      if (isMounted) setRoomItemSizes(sizes);
-    });
-    return () => {
-      isMounted = false;
-    };
-  }, [roomItems]);
-
-  // --- обновление размера фоновой картинки (на случай ресайза окна) ---
-  useEffect(() => {
-    function updateSize() {
-      if (roomBgRef.current) {
-        setRoomBgSize({
-          width: roomBgRef.current.clientWidth,
-          height: roomBgRef.current.clientHeight,
-        });
-      }
-    }
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => {
-      window.removeEventListener("resize", updateSize);
-    };
-  }, [roomImage]);
-
-  // --- вычисления для enduranceIcon (иконка выносливости) ---
-  const enduranceIcon = characteristics.find((c) => c.id === 10012)?.icon || "";
-
   // --- обработчик клика по пунктам главного меню ---
   const handleMenuClick = async (item: MenuItem) => {
     setSelectedMenuItem(item.name);
     setSelectedMenuSequence(item.sequence);
 
-    if (item.sequence === 1) {
+    if (item.sequence === MENU_SEQUENCES.RAISING) {
       // Показ/обновление раздела "Воспитание"
       setShowRaisingInteraction(false);
       setIsLoading(true);
@@ -1000,7 +372,6 @@ const App: React.FC = () => {
     setMonsterImage("");
     setRoomImage("");
     setRoomItems([]);
-    setRoomItemSizes({});
 
     setSelectedMonsterId(newMonsterId);
   };
@@ -1009,65 +380,15 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
       {/* ЭКРАН ПЕРВИЧНОЙ ЗАГРУЗКИ */}
-      {booting && !error && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gradient-to-b from-purple-200 to-orange-200">
-          <img
-            src="https://storage.yandexcloud.net/svm/loading.gif"
-            alt="Loading"
-            className="w-[60%] h-auto mb-6 max-w-xl"
-          />
-          <div className="text-3xl font-bold tracking-wider text-purple-700 mb-6">
-            ЗАГРУЗКА
-          </div>
-
-          {/* Прогресс-бар с делениями = числу методов */}
-          <div className="w-[90%] max-w-3xl">
-            <div className="flex gap-2 mb-3">
-              {bootTasks.map((t, i) => (
-                <div key={t.key} className="flex-1">
-                  <div
-                    className={`h-3 rounded ${
-                      t.done ? "bg-purple-600" : "bg-purple-200"
-                    }`}
-                    title={`${i + 1}. ${t.label}`}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between text-xs text-gray-600">
-              {bootTasks.map((t) => (
-                <span key={t.key} className="truncate w-[12%]">
-                  {t.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {booting && !error && <LoadingScreen bootTasks={bootTasks} />}
 
       {/* Спиннер для выполнения взаимодействий */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      )}
+      {isLoading && <Spinner overlay />}
 
       {/* Окно ошибок */}
-      {error && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[120]">
-          <div className="bg-white p-6 rounded shadow-lg max-w-md w-[90%]">
-            <div className="text-red-500 text-center mb-4">{error}</div>
-            <button
-              onClick={() => setError("")}
-              className="bg-purple-500 text-white px-4 py-2 rounded w-full"
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
+      {error && <ErrorModal error={error} onClose={closeError} />}
 
-      {/* Основное содержимое приложения (скрыто под экраном загрузки) */}
+      {/* Основное содержимое приложения */}
       <div className="bg-gradient-to-r from-purple-500 to-orange-500 text-white text-4xl font-handwritten text-center py-4">
         СИМУЛЯТОР ВОСПИТАНИЯ МОНСТРОВ
       </div>
@@ -1081,35 +402,14 @@ const App: React.FC = () => {
         onToggleNotifications={() => setShowNotifications(!showNotifications)}
       />
 
-      <div className="hidden md:flex items-center bg-purple-600 text-white p-4">
-        <div className="flex space-x-4">
-          {menuItems.map((item) => (
-            <div
-              key={item.name}
-              className={`flex items-center space-x-2 p-2 cursor-pointer ${
-                selectedMenuItem === item.name ? "bg-purple-800" : ""
-              }`}
-              onClick={() => handleMenuClick(item)}
-            >
-              <img src={item.iconURL} alt={item.name} className="w-8 h-8" />
-              <span>{item.name}</span>
-            </div>
-          ))}
-        </div>
-        <div className="ml-auto relative">
-          <img
-            src="https://storage.yandexcloud.net/svm/img/bell.png"
-            alt="Notifications"
-            className="w-8 h-8 cursor-pointer"
-            onClick={() => setShowNotifications(!showNotifications)}
-          />
-          {notificationCount > 0 && (
-            <span className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-2">
-              {notificationCount}
-            </span>
-          )}
-        </div>
-      </div>
+      {/* Десктопная версия главного меню */}
+      <DesktopMenu
+        menuItems={menuItems}
+        selectedMenuItem={selectedMenuItem}
+        notificationCount={notificationCount}
+        onMenuClick={handleMenuClick}
+        onToggleNotifications={() => setShowNotifications(!showNotifications)}
+      />
 
       {showNotifications && (
         <div className="bg-orange-100 p-4 shadow-md">Оповещения</div>
@@ -1125,11 +425,10 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Раздел "Воспитание" — sequence=1 */}
-      {!showRaisingInteraction && selectedMenuSequence === 1 && (
-        <div className="p-4">
-          {/* БЛОК С ПЕРЕКЛЮЧАТЕЛЕМ МОНСТРОВ И ЭНЕРГИЕЙ */}
-          <div className="flex flex-col gap-4 md:flex-row md:justify-between">
+      {/* Раздел "Воспитание" - упрощённая версия без отдельного компонента */}
+      {!showRaisingInteraction &&
+        selectedMenuSequence === MENU_SEQUENCES.RAISING && (
+          <div className="p-4">
             {/* Переключатель монстров */}
             <div className="flex space-x-1 overflow-x-auto pb-1">
               {monsters.map((monster, index) => (
@@ -1154,12 +453,11 @@ const App: React.FC = () => {
               ))}
             </div>
 
-            {/* Энергия на воспитательные взаимодействия */}
-            <div className="flex flex-col justify-between h-full items-center border border-gray-300 p-3 bg-purple-50 w-full md:w-auto md:min-w-[200px]">
-              {/* Группа для иконки и значения энергии */}
+            {/* Энергия */}
+            <div className="mt-4 flex flex-col justify-between h-full items-center border border-gray-300 p-3 bg-purple-50 w-full md:w-auto md:min-w-[200px]">
               <div className="flex items-center gap-2">
                 <img
-                  src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
+                  src={IMAGES.energy}
                   alt="Teach Energy"
                   className="w-8 h-8"
                 />
@@ -1167,197 +465,61 @@ const App: React.FC = () => {
                   Энергия: {teachEnergy}
                 </span>
               </div>
-
-              {/* Таймер */}
               {teachEnergy < 10 && (
                 <span className="text-sm text-gray-600">
                   До пополнения: {formatTimer(timer)}
                 </span>
               )}
-
-              {/* Кнопка */}
               <button className="w-full mt-2 bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed">
                 Пополнить энергию
               </button>
             </div>
-          </div>
 
-          <div className="mt-4 flex flex-col md:flex-row md:space-x-1">
-            <div className="w-full md:w-1/2 border border-gray-300 bg-orange-100">
-              {roomImage && monsterImage && (
-                <div
-                  className="relative"
-                  style={{
-                    width: "100%",
-                    aspectRatio: "4/3",
-                    background: "#fff",
-                  }}
-                >
-                  {isMonsterLoading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-                      <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  ) : (
-                    <>
-                      <img
-                        src={roomImage}
-                        alt="Room"
-                        ref={roomBgRef}
-                        className="w-full h-full object-contain"
-                        style={{
-                          display: "block",
-                          zIndex: 1,
-                          position: "relative",
-                          pointerEvents: "none",
-                          background: "#fff",
-                        }}
-                        onLoad={() => {
-                          if (roomBgRef.current) {
-                            setRoomBgSize({
-                              width: roomBgRef.current.clientWidth,
-                              height: roomBgRef.current.clientHeight,
-                            });
-                          }
-                        }}
-                      />
-                      {/* Предметы */}
-                      {roomItems.map((item) => {
-                        const size = roomItemSizes[item.id];
-                        if (!size || size.width === 0 || size.height === 0)
-                          return null; // Скрываем, если размер не загружен или fallback
-                        const bgW = roomBgSize.width;
-                        const bgH = roomBgSize.height;
-                        const cx = (item.xaxis / 100) * bgW;
-                        const cy = (item.yaxis / 100) * bgH;
-                        const leftPx = cx - size.width / 2;
-                        const topPx = cy - size.height / 2;
-                        return (
-                          <img
-                            key={item.id}
-                            src={item.spriteUrl}
-                            alt={item.name}
-                            title={item.name}
-                            style={{
-                              position: "absolute",
-                              left: `${leftPx}px`,
-                              top: `${topPx}px`,
-                              width: `${size.width}px`,
-                              height: `${size.height}px`,
-                              zIndex: 5,
-                              pointerEvents: "auto",
-                            }}
-                          />
-                        );
-                      })}
-                      {/* Монстр поверх */}
-                      <img
-                        src={monsterImage}
-                        alt="Monster"
-                        className="absolute bottom-[10%] left-1/2 w-1/2 transform -translate-x-1/2"
-                        style={{ zIndex: 10 }}
-                      />
-                    </>
-                  )}
-                </div>
-              )}
-              <div className="mt-4 space-y-2 p-2">
-                {characteristics
-                  .slice()
-                  .sort((a, b) => b.value - a.value)
-                  .map((char) => (
-                    <div
-                      key={char.id}
-                      className="flex items-center space-x-2 bg-purple-100 p-2 shadow border border-gray-300"
-                    >
-                      <img
-                        src={char.icon}
-                        alt={char.name}
-                        className="w-8 h-8"
-                      />
-                      <span className="text-purple-700 font-semibold">
-                        {char.name}: {char.value}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            {/* Набор доступных воспитательных взаимодействий с монстром */}
-            <div className="w-full md:w-1/2 mt-4 md:mt-0 grid grid-cols-2 md:grid-cols-4 gap-1 bg-purple-200">
+            {/* Простая сетка взаимодействий */}
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
               {impacts.map((impact) => (
                 <div
-                  key={impact.name}
-                  className={`relative bg-purple-50 p-0.5 shadow border border-gray-300 flex flex-col items-center justify-between ${
+                  key={impact.id}
+                  className={`bg-purple-50 p-2 rounded border cursor-pointer ${
                     impact.available && teachEnergy >= impact.energyprice
-                      ? "cursor-pointer hover:bg-purple-100 hover:shadow-md"
-                      : "opacity-50 hover:opacity-70 hover:shadow-gray-400"
+                      ? "hover:bg-purple-100"
+                      : "opacity-50"
                   }`}
-                  title={impact.comment}
                   onClick={() => handleImpactClick(impact)}
                 >
                   <img
                     src={impact.image}
                     alt={impact.name}
-                    className="w-full h-auto object-contain"
+                    className="w-full h-auto"
                   />
-
-                  {/* Название авто-ужимается, чтобы не вылезать за пределы бейджа */}
-                  <AutoFitText
-                    className="text-purple-800 px-1"
-                    min={10}
-                    max={16}
-                  >
-                    {impact.name}
-                  </AutoFitText>
-
-                  <div className="flex items-center justify-center mb-1 space-x-2">
-                    {impact.minendurance !== undefined &&
-                      impact.minendurance !== null &&
-                      impact.minendurance !== 0 && (
-                        <div className="flex items-center">
-                          <img
-                            src={enduranceIcon}
-                            alt="Min Endurance"
-                            className="w-[15px] h-[22px]"
-                          />
-                          <span className="text-green-700 text-sm ml-1">
-                            {impact.minendurance}
-                          </span>
-                        </div>
-                      )}
-                    <div className="flex items-center">
-                      <img
-                        src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
-                        alt="Energy Price"
-                        className="w-[15px] h-[22px]"
-                      />
-                      <span className="text-yellow-500 text-sm ml-1">
-                        {impact.energyprice}
-                      </span>
-                    </div>
+                  <div className="text-center text-sm mt-1">{impact.name}</div>
+                  <div className="text-center text-xs text-yellow-600">
+                    Энергия: {impact.energyprice}
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Простые визуальные заглушки для sequence 2/3/4 */}
-      {!showRaisingInteraction && selectedMenuSequence === 2 && <Arena />}
-      {!showRaisingInteraction && selectedMenuSequence === 3 && (
-        <Shop userId={userId} />
-      )}
-      {!showRaisingInteraction && selectedMenuSequence === 5 && <Account />}
-      {!showRaisingInteraction && selectedMenuSequence === 4 && (
-        <Inventory userId={userId} />
-      )}
+      {/* Остальные разделы */}
+      {!showRaisingInteraction &&
+        selectedMenuSequence === MENU_SEQUENCES.ARENA && <Arena />}
+      {!showRaisingInteraction &&
+        selectedMenuSequence === MENU_SEQUENCES.SHOP && (
+          <Shop userId={userId} />
+        )}
+      {!showRaisingInteraction &&
+        selectedMenuSequence === MENU_SEQUENCES.INVENTORY && (
+          <Inventory userId={userId} />
+        )}
+      {!showRaisingInteraction &&
+        selectedMenuSequence === MENU_SEQUENCES.ACCOUNT && <Account />}
 
       <SpeedInsights />
     </div>
   );
 };
 
-import { createRoot } from "react-dom/client";
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);
