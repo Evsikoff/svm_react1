@@ -6,6 +6,7 @@ import RaisingInteraction from "./RaisingInteraction";
 import Arena from "./Arena";
 import Shop from "./Shop";
 import Account from "./Account";
+import Inventory from "./Inventory";
 
 // Автоматическое поджатие текста под ширину контейнера (в одну строку)
 // Автоматическое поджатие текста: сначала в одну строку,
@@ -1300,6 +1301,9 @@ const App: React.FC = () => {
         <Shop userId={userId} />
       )}
       {!showRaisingInteraction && selectedMenuSequence === 5 && <Account />}
+      {!showRaisingInteraction && selectedMenuSequence === 4 && (
+        <Inventory userId={userId} />
+      )}
 
       <SpeedInsights />
     </div>
