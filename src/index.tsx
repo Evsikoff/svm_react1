@@ -188,23 +188,30 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Таймер пополнения энергии
-  useEffect(() => {
-    if (booting) return;
-    if (!nextReplenishment) return;
+  
+// Таймер пополнения энергии
+useEffect(() => {
+  if (booting) return;
+  if (!nextReplenishment) return;
 
-    const targetTime = new Date(nextReplenishment).getTime();
-    const updateTimer = () => {
-      const now = new Date().getTime();
-      const timeLeft = Math.max(0, Math.floor((targetTime - now) / 1000));
-      setTimer(timeLeft);
-      if (timeLeft <= 0) {
-        loadTeachEnergy();
-      }
-    };
-    const interval = setInterval(updateTimer, 1000);
-    return () => clearInterval(interval);
-  }, [nextReplenishment, userId, booting]);
+  const targetTime = new Date(nextReplenishment).getTime();
+  let hasTriggeredReload = false; // Флаг для предотвращения повторных вызовов
+  
+  const updateTimer = () => {
+    const now = new Date().getTime();
+    const timeLeft = Math.max(0, Math.floor((targetTime - now) / 1000));
+    setTimer(timeLeft);
+    
+    // Вызываем loadTeachEnergy только один раз когда таймер достигает 0
+    if (timeLeft <= 0 && !hasTriggeredReload) {
+      hasTriggeredReload = true;
+      loadTeachEnergy();
+    }
+  };
+  
+  const interval = setInterval(updateTimer, 1000);
+  return () => clearInterval(interval);
+}, [nextReplenishment, userId, booting]);
 
   // Загрузка энергии пользователя
   const loadTeachEnergy = async () => {
