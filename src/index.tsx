@@ -381,18 +381,14 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
       {/* ЭКРАН ПЕРВИЧНОЙ ЗАГРУЗКИ */}
       {booting && !error && <LoadingScreen bootTasks={bootTasks} />}
-
       {/* Спиннер для выполнения взаимодействий */}
       {isLoading && <Spinner overlay />}
-
       {/* Окно ошибок */}
       {error && <ErrorModal error={error} onClose={closeError} />}
-
       {/* Основное содержимое приложения */}
       <div className="bg-gradient-to-r from-purple-500 to-orange-500 text-white text-4xl font-handwritten text-center py-4">
         СИМУЛЯТОР ВОСПИТАНИЯ МОНСТРОВ
       </div>
-
       {/* Мобильная версия главного меню */}
       <MobileMainMenu
         items={menuItems}
@@ -401,7 +397,6 @@ const App: React.FC = () => {
         onSelect={handleMenuClick}
         onToggleNotifications={() => setShowNotifications(!showNotifications)}
       />
-
       {/* Десктопная версия главного меню */}
       <DesktopMenu
         menuItems={menuItems}
@@ -410,11 +405,9 @@ const App: React.FC = () => {
         onMenuClick={handleMenuClick}
         onToggleNotifications={() => setShowNotifications(!showNotifications)}
       />
-
       {showNotifications && (
         <div className="bg-orange-100 p-4 shadow-md">Оповещения</div>
       )}
-
       {showRaisingInteraction && interactionData && (
         <RaisingInteraction
           videoUrl={interactionData.video || ""}
@@ -424,84 +417,208 @@ const App: React.FC = () => {
           onClose={closeRaisingInteraction}
         />
       )}
-
       {/* Раздел "Воспитание" - упрощённая версия без отдельного компонента */}
+
+      {/* Раздел "Воспитание" - полная версия с компонентами */}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.RAISING && (
           <div className="p-4">
-            {/* Переключатель монстров */}
-            <div className="flex space-x-1 overflow-x-auto pb-1">
-              {monsters.map((monster, index) => (
-                <div
-                  key={monster.name}
-                  className={`relative min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 cursor-pointer border border-gray-300 ${
-                    selectedMonsterId === monstersId[index]
-                      ? "border-2 border-purple-500"
-                      : ""
-                  }`}
-                  onClick={() => handleMonsterSwitch(monstersId[index])}
-                >
-                  <img
-                    src={monster.face}
-                    alt={monster.name}
-                    className="w-[229px] h-[129px]"
-                  />
-                  <div className="text-center font-handwritten text-lg">
-                    {monster.name}
+            {/* БЛОК С ПЕРЕКЛЮЧАТЕЛЕМ МОНСТРОВ И ЭНЕРГИЕЙ */}
+            <div className="flex flex-col gap-4 md:flex-row md:justify-between">
+              {/* Переключатель монстров */}
+              <div className="flex space-x-1 overflow-x-auto pb-1">
+                {monsters.map((monster, index) => (
+                  <div
+                    key={monster.name}
+                    className={`relative min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 cursor-pointer border border-gray-300 ${
+                      selectedMonsterId === monstersId[index]
+                        ? "border-2 border-purple-500"
+                        : ""
+                    }`}
+                    onClick={() => handleMonsterSwitch(monstersId[index])}
+                  >
+                    <img
+                      src={monster.face}
+                      alt={monster.name}
+                      className="w-[229px] h-[129px]"
+                    />
+                    <div className="text-center font-handwritten text-lg">
+                      {monster.name}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Энергия */}
-            <div className="mt-4 flex flex-col justify-between h-full items-center border border-gray-300 p-3 bg-purple-50 w-full md:w-auto md:min-w-[200px]">
-              <div className="flex items-center gap-2">
-                <img
-                  src={IMAGES.energy}
-                  alt="Teach Energy"
-                  className="w-8 h-8"
-                />
-                <span className="font-semibold text-lg text-purple-800">
-                  Энергия: {teachEnergy}
-                </span>
+                ))}
               </div>
-              {teachEnergy < 10 && (
-                <span className="text-sm text-gray-600">
-                  До пополнения: {formatTimer(timer)}
-                </span>
-              )}
-              <button className="w-full mt-2 bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed">
-                Пополнить энергию
-              </button>
+
+              {/* Энергия на воспитательные взаимодействия */}
+              <div className="flex flex-col justify-between h-full items-center border border-gray-300 p-3 bg-purple-50 w-full md:w-auto md:min-w-[200px]">
+                <div className="flex items-center gap-2">
+                  <img
+                    src={IMAGES.energy}
+                    alt="Teach Energy"
+                    className="w-8 h-8"
+                  />
+                  <span className="font-semibold text-lg text-purple-800">
+                    Энергия: {teachEnergy}
+                  </span>
+                </div>
+
+                {teachEnergy < 10 && (
+                  <span className="text-sm text-gray-600">
+                    До пополнения: {formatTimer(timer)}
+                  </span>
+                )}
+
+                <button className="w-full mt-2 bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed">
+                  Пополнить энергию
+                </button>
+              </div>
             </div>
 
-            {/* Простая сетка взаимодействий */}
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-              {impacts.map((impact) => (
-                <div
-                  key={impact.id}
-                  className={`bg-purple-50 p-2 rounded border cursor-pointer ${
-                    impact.available && teachEnergy >= impact.energyprice
-                      ? "hover:bg-purple-100"
-                      : "opacity-50"
-                  }`}
-                  onClick={() => handleImpactClick(impact)}
-                >
-                  <img
-                    src={impact.image}
-                    alt={impact.name}
-                    className="w-full h-auto"
-                  />
-                  <div className="text-center text-sm mt-1">{impact.name}</div>
-                  <div className="text-center text-xs text-yellow-600">
-                    Энергия: {impact.energyprice}
+            <div className="mt-4 flex flex-col md:flex-row md:space-x-1">
+              {/* Комната монстра */}
+              <div className="w-full md:w-1/2 border border-gray-300 bg-orange-100">
+                {roomImage && monsterImage && (
+                  <div
+                    className="relative"
+                    style={{
+                      width: "100%",
+                      aspectRatio: "4/3",
+                      background: "#fff",
+                    }}
+                  >
+                    {isMonsterLoading ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+                        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : (
+                      <>
+                        <img
+                          src={roomImage}
+                          alt="Room"
+                          className="w-full h-full object-contain"
+                          style={{
+                            display: "block",
+                            zIndex: 1,
+                            position: "relative",
+                            pointerEvents: "none",
+                            background: "#fff",
+                          }}
+                        />
+                        {/* Предметы в комнате */}
+                        {roomItems.map((item) => (
+                          <img
+                            key={item.id}
+                            src={item.spriteUrl}
+                            alt={item.name}
+                            title={item.name}
+                            style={{
+                              position: "absolute",
+                              left: `${item.xaxis}%`,
+                              top: `${item.yaxis}%`,
+                              transform: "translate(-50%, -50%)",
+                              zIndex: 5,
+                              pointerEvents: "auto",
+                              maxWidth: "50px",
+                              maxHeight: "50px",
+                            }}
+                          />
+                        ))}
+                        {/* Монстр поверх всего */}
+                        <img
+                          src={monsterImage}
+                          alt="Monster"
+                          className="absolute bottom-[10%] left-1/2 w-1/2 transform -translate-x-1/2"
+                          style={{ zIndex: 10 }}
+                        />
+                      </>
+                    )}
                   </div>
+                )}
+
+                {/* Характеристики монстра */}
+                <div className="mt-4 space-y-2 p-2">
+                  {characteristics
+                    .slice()
+                    .sort((a, b) => b.value - a.value)
+                    .map((char) => (
+                      <div
+                        key={char.id}
+                        className="flex items-center space-x-2 bg-purple-100 p-2 shadow border border-gray-300"
+                      >
+                        <img
+                          src={char.icon}
+                          alt={char.name}
+                          className="w-8 h-8"
+                        />
+                        <span className="text-purple-700 font-semibold">
+                          {char.name}: {char.value}
+                        </span>
+                      </div>
+                    ))}
                 </div>
-              ))}
+              </div>
+
+              {/* Набор доступных воспитательных взаимодействий с монстром */}
+              <div className="w-full md:w-1/2 mt-4 md:mt-0 grid grid-cols-2 md:grid-cols-4 gap-1 bg-purple-200">
+                {impacts.map((impact) => {
+                  // Получаем иконку выносливости для отображения минимальных требований
+                  const enduranceIcon =
+                    characteristics.find((c) => c.id === 10012)?.icon || "";
+
+                  return (
+                    <div
+                      key={impact.id}
+                      className={`relative bg-purple-50 p-0.5 shadow border border-gray-300 flex flex-col items-center justify-between ${
+                        impact.available && teachEnergy >= impact.energyprice
+                          ? "cursor-pointer hover:bg-purple-100 hover:shadow-md"
+                          : "opacity-50 hover:opacity-70 hover:shadow-gray-400"
+                      }`}
+                      title={impact.comment}
+                      onClick={() => handleImpactClick(impact)}
+                    >
+                      <img
+                        src={impact.image}
+                        alt={impact.name}
+                        className="w-full h-auto object-contain"
+                      />
+
+                      <div className="text-purple-800 px-1 text-center text-sm">
+                        {impact.name}
+                      </div>
+
+                      <div className="flex items-center justify-center mb-1 space-x-2">
+                        {impact.minendurance !== undefined &&
+                          impact.minendurance !== null &&
+                          impact.minendurance !== 0 && (
+                            <div className="flex items-center">
+                              <img
+                                src={enduranceIcon}
+                                alt="Min Endurance"
+                                className="w-[15px] h-[22px]"
+                              />
+                              <span className="text-green-700 text-sm ml-1">
+                                {impact.minendurance}
+                              </span>
+                            </div>
+                          )}
+                        <div className="flex items-center">
+                          <img
+                            src="https://storage.yandexcloud.net/svm/img/userteachenergy.png"
+                            alt="Energy Price"
+                            className="w-[15px] h-[22px]"
+                          />
+                          <span className="text-yellow-500 text-sm ml-1">
+                            {impact.energyprice}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
-
       {/* Остальные разделы */}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.ARENA && <Arena />}
@@ -515,7 +632,6 @@ const App: React.FC = () => {
         )}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.ACCOUNT && <Account />}
-
       <SpeedInsights />
     </div>
   );
