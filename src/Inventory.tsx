@@ -1,6 +1,10 @@
-// Inventory.tsx — компонент "Инвентарь" с фреймом "Предметы пользователя"
+// Inventory.tsx — компонент "Инвентарь" с фреймами "Предметы пользователя" и "Предметы монстров"
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+
+// Импорт компонента MonsterItems
+// Убедитесь, что файл MonsterItems.tsx создан в той же папке (src/)
+const MonsterItems = React.lazy(() => import("./MonsterItems"));
 
 // ===== Типы данных =====
 interface ItemAction {
@@ -135,7 +139,7 @@ const Inventory: React.FC<InventoryProps> = ({ userId }) => {
   };
 
   // ===== Обновление всех фреймов после действия =====
-  const refreshAllFrames = async () => {
+  const refreshAllFrames = useCallback(async () => {
     try {
       // Устанавливаем общий спиннер обновления
       setLoading(true);
@@ -143,17 +147,14 @@ const Inventory: React.FC<InventoryProps> = ({ userId }) => {
       // Перезагружаем предметы пользователя
       await loadUserItems();
 
-      // Здесь можно добавить загрузку других фреймов блока "Инвентарь"
-      // если они будут добавлены в будущем
-      // Например:
-      // await loadUserStats();
-      // await loadUserAchievements();
+      // Фрейм "Предметы монстров" будет обновляться через свой собственный механизм
+      // при вызове onRefreshAllFrames
     } catch (e: any) {
       setError(e.message || "Ошибка при обновлении данных");
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadUserItems]);
 
   // ===== Получение цвета бейджа по типу предмета =====
   const getBadgeStyle = (type: number): string => {
@@ -351,6 +352,20 @@ const Inventory: React.FC<InventoryProps> = ({ userId }) => {
               </div>
             )}
           </div>
+
+          {/* Фрейм "Предметы монстров" */}
+          <React.Suspense
+            fallback={
+              <div className="w-full flex items-center justify-center py-16">
+                <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <MonsterItems
+              userId={userId}
+              onRefreshAllFrames={refreshAllFrames}
+            />
+          </React.Suspense>
         </div>
       )}
 

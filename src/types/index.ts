@@ -135,3 +135,37 @@ export interface AutoFitTextProps {
   max?: number;
   className?: string;
 }
+
+// Дополнительные типы для компонента MonsterItems
+// Эти типы нужно добавить в src/types/index.ts
+
+export interface MonsterItemAction {
+  actionname: string;
+  actionicon: string;
+  actionfunction: string;
+  actionargument: string;
+}
+
+export interface MonsterInventoryItem {
+  inventoryid: number;
+  inventoryname: string;
+  inventoryimage: string;
+  inventoryfunction: string | null;
+  inventorydescription: string;
+  inventorytype: number;
+  inventorysaleprice: number;
+  quantity: number;
+  activity: boolean;
+  itemactions: MonsterItemAction[];
+}
+
+export interface MonsterWithItems {
+  monsterid: number;
+  monstername: string;
+  monsterface: string;
+  monsteritems: MonsterInventoryItem[];
+}
+
+export interface MonsterItemsResponse {
+  monsters: MonsterWithItems[];
+}
