@@ -64,7 +64,10 @@ async function withRetry<T>(
 }
 
 // ===== Основной компонент =====
-const MonsterItems: React.FC<MonsterItemsProps> = ({ userId, onRefreshAllFrames }) => {
+const MonsterItems: React.FC<MonsterItemsProps> = ({
+  userId,
+  onRefreshAllFrames,
+}) => {
   const [monsters, setMonsters] = useState<Monster[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -96,19 +99,20 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({ userId, onRefreshAllFrames 
 
       const monstersData = response.data.monsters || [];
       setMonsters(monstersData);
-      
-      // Автоматически выбираем первую вкладку, если есть монстры
+
+      // Автоматически выбираем первую вкладку только если activeTab еще не установлен
+      // и только если у нас есть монстры
       if (monstersData.length > 0 && activeTab === null) {
         setActiveTab(monstersData[0].monsterid);
       }
-      
+
       setError("");
     } catch (e: any) {
       setError(e.message || "Ошибка при загрузке предметов монстров");
     } finally {
       setLoading(false);
     }
-  }, [userId, activeTab]);
+  }, [userId]); // Убираем activeTab из зависимостей
 
   useEffect(() => {
     loadMonsterItems();
@@ -180,7 +184,7 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({ userId, onRefreshAllFrames 
     }
   };
 
-  const activeMonster = monsters.find(m => m.monsterid === activeTab);
+  const activeMonster = monsters.find((m) => m.monsterid === activeTab);
 
   // ===== Рендер =====
   return (
@@ -242,7 +246,9 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({ userId, onRefreshAllFrames 
                         alt={monster.monstername}
                         className="w-8 h-8 rounded-full object-cover"
                         onError={(e) => {
-                          console.error(`Ошибка загрузки фото монстра: ${monster.monsterface}`);
+                          console.error(
+                            `Ошибка загрузки фото монстра: ${monster.monsterface}`
+                          );
                           e.currentTarget.src = "/placeholder-monster.png";
                         }}
                       />
@@ -270,7 +276,9 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({ userId, onRefreshAllFrames 
                       <div className="flex flex-wrap justify-center gap-6">
                         {activeMonster.monsteritems.map((item) => {
                           const isClickable = item.activity;
-                          const isDropdownOpen = selectedItem === `${activeMonster.monsterid}-${item.inventoryid}`;
+                          const isDropdownOpen =
+                            selectedItem ===
+                            `${activeMonster.monsterid}-${item.inventoryid}`;
 
                           return (
                             <div key={item.inventoryid} className="relative">
@@ -284,10 +292,17 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({ userId, onRefreshAllFrames 
                                       ? "cursor-pointer hover:shadow-lg hover:scale-105 active:scale-95"
                                       : "opacity-60 cursor-not-allowed"
                                   }
-                                  ${isDropdownOpen ? "ring-2 ring-emerald-500" : ""}
+                                  ${
+                                    isDropdownOpen
+                                      ? "ring-2 ring-emerald-500"
+                                      : ""
+                                  }
                                 `}
                                 onClick={() => {
-                                  if (isClickable && item.itemactions.length > 0) {
+                                  if (
+                                    isClickable &&
+                                    item.itemactions.length > 0
+                                  ) {
                                     const itemKey = `${activeMonster.monsterid}-${item.inventoryid}`;
                                     setSelectedItem(
                                       isDropdownOpen ? null : itemKey
@@ -312,7 +327,8 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({ userId, onRefreshAllFrames 
                                       console.error(
                                         `Ошибка загрузки изображения: ${item.inventoryimage}`
                                       );
-                                      e.currentTarget.src = "/placeholder-item.png";
+                                      e.currentTarget.src =
+                                        "/placeholder-item.png";
                                     }}
                                   />
                                 </div>
@@ -346,44 +362,50 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({ userId, onRefreshAllFrames 
                               </div>
 
                               {/* Выпадающий список действий */}
-                              {isDropdownOpen && item.itemactions.length > 0 && (
-                                <>
-                                  {/* Затемнение фона */}
-                                  <div
-                                    className="fixed inset-0 bg-black bg-opacity-25 z-40"
-                                    onClick={() => setSelectedItem(null)}
-                                  />
+                              {isDropdownOpen &&
+                                item.itemactions.length > 0 && (
+                                  <>
+                                    {/* Затемнение фона */}
+                                    <div
+                                      className="fixed inset-0 bg-black bg-opacity-25 z-40"
+                                      onClick={() => setSelectedItem(null)}
+                                    />
 
-                                  {/* Выпадающий список */}
-                                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
-                                    {item.itemactions.map((action, index) => (
-                                      <button
-                                        key={index}
-                                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0"
-                                        onClick={() => handleItemAction(action)}
-                                        disabled={actionLoading === action.actionname}
-                                      >
-                                        {/* Иконка действия */}
-                                        <img
-                                          src={action.actionicon}
-                                          alt=""
-                                          className="w-6 h-6 object-contain flex-shrink-0"
-                                        />
+                                    {/* Выпадающий список */}
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                                      {item.itemactions.map((action, index) => (
+                                        <button
+                                          key={index}
+                                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0"
+                                          onClick={() =>
+                                            handleItemAction(action)
+                                          }
+                                          disabled={
+                                            actionLoading === action.actionname
+                                          }
+                                        >
+                                          {/* Иконка действия */}
+                                          <img
+                                            src={action.actionicon}
+                                            alt=""
+                                            className="w-6 h-6 object-contain flex-shrink-0"
+                                          />
 
-                                        {/* Текст действия */}
-                                        <span className="text-sm text-gray-700 flex-grow">
-                                          {action.actionname}
-                                        </span>
+                                          {/* Текст действия */}
+                                          <span className="text-sm text-gray-700 flex-grow">
+                                            {action.actionname}
+                                          </span>
 
-                                        {/* Спиннер для загружающегося действия */}
-                                        {actionLoading === action.actionname && (
-                                          <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                                        )}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </>
-                              )}
+                                          {/* Спиннер для загружающегося действия */}
+                                          {actionLoading ===
+                                            action.actionname && (
+                                            <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                                          )}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
                             </div>
                           );
                         })}
