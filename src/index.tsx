@@ -73,6 +73,16 @@ const App: React.FC = () => {
   );
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  const [roomItemDimensions, setRoomItemDimensions] = useState<
+    Record<
+      string,
+      {
+        displayWidth: number;
+        displayHeight: number;
+      }
+    >
+  >({});
+
   // --- состояние экрана загрузки ---
   const [booting, setBooting] = useState<boolean>(true);
   const [bootTasks, setBootTasks] = useState<BootTask[]>(
@@ -187,6 +197,59 @@ const App: React.FC = () => {
       cancelled = true;
     };
   }, []);
+  //Эффект для предметов в комнате монстра
+  useEffect(() => {
+    if (roomItems.length === 0) {
+      setRoomItemDimensions({});
+      return;
+    }
+
+    const loadDimensions = async () => {
+      const dimensions: Record<
+        string,
+        { displayWidth: number; displayHeight: number }
+      > = {};
+
+      for (const item of roomItems) {
+        try {
+          const img = new Image();
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => {
+              // Вычисляем пропорциональные размеры
+              const maxSize = 80;
+              const scale = Math.min(
+                maxSize / img.naturalWidth,
+                maxSize / img.naturalHeight,
+                1
+              );
+
+              dimensions[item.spriteUrl] = {
+                displayWidth: Math.round(img.naturalWidth * scale),
+                displayHeight: Math.round(img.naturalHeight * scale),
+              };
+              resolve();
+            };
+            img.onerror = () => {
+              // Fallback размеры
+              dimensions[item.spriteUrl] = {
+                displayWidth: 50,
+                displayHeight: 50,
+              };
+              resolve();
+            };
+            img.src = item.spriteUrl;
+          });
+        } catch (error) {
+          console.warn(`Ошибка загрузки размеров для ${item.spriteUrl}`);
+          dimensions[item.spriteUrl] = { displayWidth: 50, displayHeight: 50 };
+        }
+      }
+
+      setRoomItemDimensions(dimensions);
+    };
+
+    loadDimensions();
+  }, [roomItems]);
 
   // Таймер пополнения энергии
   useEffect(() => {
@@ -511,28 +574,51 @@ const App: React.FC = () => {
                           }}
                         />
                         {/* Предметы в комнате */}
-                        {roomItems.map((item) => (
-                          <img
-                            key={item.id}
-                            src={item.spriteUrl}
-                            alt={item.name}
-                            title={item.name}
-                            style={{
-                              position: "absolute",
-                              left: `${item.xaxis}%`,
-                              top: `${item.yaxis}%`,
-                              transform: "translate(-50%, -50%)",
-                              zIndex: 5,
-                              pointerEvents: "auto",
-                              maxWidth: "80px",
-                              maxHeight: "80px",
-                              width: "auto",
-                              height: "auto",
-                              objectFit: "contain", // Ключевое свойство для сохранения пропорций
-                              imageRendering: "crisp-edges", // Для четкости пиксельной графики
-                            }}
-                          />
-                        ))}
+                        {roomItems.map((item) => {
+                          const dimensions = roomItemDimensions[item.spriteUrl];
+                          if (!dimensions) {
+                            // Пока размеры не загружены, показываем с базовыми стилями
+                            return (
+                              <img
+                                key={item.id}
+                                src={item.spriteUrl}
+                                alt={item.name}
+                                title={item.name}
+                                style={{
+                                  position: "absolute",
+                                  left: `${item.xaxis}%`,
+                                  top: `${item.yaxis}%`,
+                                  transform: "translate(-50%, -50%)",
+                                  zIndex: 5,
+                                  pointerEvents: "auto",
+                                  maxWidth: "80px",
+                                  maxHeight: "80px",
+                                  objectFit: "contain",
+                                }}
+                              />
+                            );
+                          }
+
+                          return (
+                            <img
+                              key={item.id}
+                              src={item.spriteUrl}
+                              alt={item.name}
+                              title={item.name}
+                              style={{
+                                position: "absolute",
+                                left: `${item.xaxis}%`,
+                                top: `${item.yaxis}%`,
+                                transform: "translate(-50%, -50%)",
+                                zIndex: 5,
+                                pointerEvents: "auto",
+                                width: `${dimensions.displayWidth}px`,
+                                height: `${dimensions.displayHeight}px`,
+                                objectFit: "contain",
+                              }}
+                            />
+                          );
+                        })}
                         {/* Монстр поверх всего */}
                         <img
                           src={monsterImage}
