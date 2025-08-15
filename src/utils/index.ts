@@ -1,3 +1,5 @@
+// src/utils/index.ts
+
 // Функция для сброса кеша изображений
 export const invalidateImageCache = (url: string): string => {
   const timestamp = Date.now();
@@ -52,3 +54,69 @@ export async function withRetry<T>(
 
   throw lastErr;
 }
+
+// ===== НОВЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С РАЗМЕРАМИ ИЗОБРАЖЕНИЙ =====
+
+/**
+ * Получает размеры изображения по URL
+ */
+export const getImageDimensions = (
+  imageUrl: string
+): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      resolve({
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      });
+    };
+
+    img.onerror = () => {
+      reject(new Error(`Не удалось загрузить изображение: ${imageUrl}`));
+    };
+
+    img.src = imageUrl;
+  });
+};
+
+/**
+ * Получает размеры множества изображений параллельно
+ */
+export const getMultipleImageDimensions = async (
+  imageUrls: string[]
+): Promise<Record<string, { width: number; height: number }>> => {
+  const results: Record<string, { width: number; height: number }> = {};
+
+  const promises = imageUrls.map(async (url) => {
+    try {
+      const dimensions = await getImageDimensions(url);
+      results[url] = dimensions;
+    } catch (error) {
+      console.warn(`Ошибка получения размеров для ${url}:`, error);
+      // Fallback размеры
+      results[url] = { width: 50, height: 50 };
+    }
+  });
+
+  await Promise.all(promises);
+  return results;
+};
+
+/**
+ * Вычисляет пропорциональные размеры для отображения
+ */
+export const calculateDisplaySize = (
+  originalWidth: number,
+  originalHeight: number,
+  maxSize: number = 80
+): { width: number; height: number; scale: number } => {
+  const scale = Math.min(maxSize / originalWidth, maxSize / originalHeight, 1);
+
+  return {
+    width: Math.round(originalWidth * scale),
+    height: Math.round(originalHeight * scale),
+    scale,
+  };
+};
