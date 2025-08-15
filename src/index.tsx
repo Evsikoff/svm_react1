@@ -216,7 +216,7 @@ const App: React.FC = () => {
           await new Promise<void>((resolve, reject) => {
             img.onload = () => {
               // Вычисляем пропорциональные размеры
-              const maxSize = 80;
+              const maxSize = 177;
               const scale = Math.min(
                 maxSize / img.naturalWidth,
                 maxSize / img.naturalHeight,
