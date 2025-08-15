@@ -124,11 +124,11 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
             <h2 className="text-xl font-bold text-orange-600 mb-4 text-center">
               Полученные предметы
             </h2>
-            <div className="grid gap-4 grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3">
+            <div className="flex flex-wrap justify-center gap-4">
               {inventoryItems.map((item) => (
                 <div
                   key={item.inventoryid}
-                  className="relative bg-orange-50 p-4 border border-orange-300 rounded-lg shadow-sm"
+                  className="relative bg-orange-50 p-4 border border-orange-300 rounded-lg shadow-sm w-[320px] sm:w-[360px]"
                 >
                   <div className="absolute top-2 left-2 bg-orange-500 text-white text-sm font-semibold px-2 py-1 rounded">
                     {item.quantity}
