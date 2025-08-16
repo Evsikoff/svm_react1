@@ -85,6 +85,13 @@ export interface InventoryItem {
   quantity: number;
 }
 
+// НОВЫЙ ТИП: Эффект предмета
+export interface ItemEffect {
+  effecttext: string;
+  itemname: string;
+  itemimage: string;
+}
+
 export interface ImpactResponse {
   errortext: string;
   video?: string;
@@ -95,6 +102,7 @@ export interface ImpactResponse {
     amount: number;
   }[];
   inventoryitems?: InventoryItem[];
+  itemeffects?: ItemEffect[]; // НОВОЕ ПОЛЕ для эффектов предметов
 }
 
 // Типы для полосы загрузки
@@ -137,8 +145,6 @@ export interface AutoFitTextProps {
 }
 
 // Дополнительные типы для компонента MonsterItems
-// Эти типы нужно добавить в src/types/index.ts
-
 export interface MonsterItemAction {
   actionname: string;
   actionicon: string;

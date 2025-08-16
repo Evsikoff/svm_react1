@@ -14,11 +14,18 @@ interface InventoryItem {
   quantity: number;
 }
 
+interface ItemEffect {
+  effecttext: string;
+  itemname: string;
+  itemimage: string;
+}
+
 interface RaisingInteractionProps {
   videoUrl: string;
   text: string;
   characteristicsChanges: CharacteristicChange[];
   inventoryItems: InventoryItem[];
+  itemEffects?: ItemEffect[]; // Новый пропс для эффектов предметов
   onClose: () => void;
 }
 
@@ -27,6 +34,7 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
   text,
   characteristicsChanges,
   inventoryItems,
+  itemEffects = [], // Значение по умолчанию
   onClose,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -114,6 +122,52 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
           </table>
         </div>
       </div>
+
+      {/* НОВЫЙ ФРЕЙМ: Изменения благодаря предметам монстра */}
+      {itemEffects.length > 0 && (
+        <div className="flex justify-center mb-4">
+          <div
+            className={`bg-gradient-to-br from-cyan-50 to-teal-50 p-4 border border-cyan-300 shadow-md ${commonWidth}`}
+          >
+            <h2 className="text-lg sm:text-xl font-bold text-teal-700 mb-4 text-center border-b-2 border-teal-200 pb-2">
+              Изменения в ходе воспитательного взаимодействия благодаря наличию
+              у монстра некоторых предметов
+            </h2>
+            <div className="flex flex-wrap justify-center gap-3">
+              {itemEffects.map((effect, index) => (
+                <div
+                  key={index}
+                  className="bg-gradient-to-br from-teal-100 to-cyan-100 border border-teal-400 rounded-xl p-3 shadow-sm w-full sm:w-[320px] lg:w-[360px] transition-transform hover:scale-105"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <img
+                      src={effect.itemimage}
+                      alt={effect.itemname}
+                      className="w-12 h-12 object-contain rounded-lg bg-white/60 p-1 shadow-sm"
+                      onError={(e) => {
+                        console.error(
+                          `Ошибка загрузки изображения предмета: ${effect.itemimage}`
+                        );
+                        e.currentTarget.src = "/fallback-item.png";
+                      }}
+                    />
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-teal-800 leading-tight">
+                        {effect.itemname}
+                      </h3>
+                    </div>
+                  </div>
+                  <div className="bg-white/50 rounded-lg p-2 border border-teal-200">
+                    <p className="text-sm text-teal-700 font-medium leading-relaxed">
+                      {effect.effecttext}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Полученные предметы: та же ширина, адаптивная сетка */}
       {inventoryItems.length > 0 && (
