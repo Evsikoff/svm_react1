@@ -347,6 +347,28 @@ const App: React.FC = () => {
     loadMonsterData();
   }, [selectedMonsterId, booting]);
 
+  // Загрузка главного меню
+  const loadMainMenu = async () => {
+    if (monstersId.length === 0) return;
+    try {
+      const mainMenuRes = await apiService.getMainMenu(monstersId);
+      const items = mainMenuRes.menuitems || [];
+      const sortedItems = items.sort((a, b) => a.sequence - b.sequence);
+      setMenuItems(sortedItems);
+
+      // Обновляем выбранный пункт меню, если он изменился
+      const currentSelectedItem = sortedItems.find(
+        (item) => item.name === selectedMenuItem
+      );
+      if (currentSelectedItem) {
+        setSelectedMenuItem(currentSelectedItem.name);
+        setSelectedMenuSequence(currentSelectedItem.sequence);
+      }
+    } catch {
+      // ошибка уже показана
+    }
+  };
+
   // --- клик по взаимодействию ---
   const handleImpactClick = async (impact: MonsterImpact) => {
     if (
@@ -401,6 +423,7 @@ const App: React.FC = () => {
         loadCharacteristics(),
         loadMonsterRoom(),
         loadImpacts(),
+        loadMainMenu(), // Добавляем обновление главного меню
       ]);
     } catch {
       setError("Ошибка при обновлении данных");
