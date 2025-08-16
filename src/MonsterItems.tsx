@@ -120,8 +120,11 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({
 
   // ===== Выполнение действия с предметом =====
   const handleItemAction = async (action: ItemAction) => {
+    console.log("Начинаем выполнение действия:", action.actionname);
+
+    // Устанавливаем спиннер и закрываем выпадающий список
     setActionLoading(action.actionname);
-    setSelectedItem(null); // закрыть выпадающий список
+    setSelectedItem(null);
 
     try {
       let requestBody: any;
@@ -131,11 +134,16 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({
         requestBody = {};
       }
 
+      console.log("Отправляем запрос к:", action.actionfunction);
+      console.log("С данными:", requestBody);
+
       const response = await withRetry(
         () => axios.post(action.actionfunction, requestBody),
         () => true, // принимаем любой ответ
         "Ошибка при выполнении действия"
       );
+
+      console.log("Получен ответ:", response.data);
 
       // Показываем сообщение из ответа или стандартное
       const message =
@@ -145,9 +153,11 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({
       setActionMessage(String(message));
       setShowModal(true);
     } catch (e: any) {
+      console.error("Ошибка при выполнении действия:", e);
       setActionMessage(e.message || "Произошла ошибка при выполнении действия");
       setShowModal(true);
     } finally {
+      console.log("Убираем спиннер");
       setActionLoading(null);
     }
   };
@@ -376,7 +386,11 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({
                                       {item.itemactions.map((action, index) => (
                                         <button
                                           key={index}
-                                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0"
+                                          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0 ${
+                                            actionLoading === action.actionname
+                                              ? "bg-gray-50 cursor-not-allowed"
+                                              : ""
+                                          }`}
                                           onClick={() =>
                                             handleItemAction(action)
                                           }
@@ -405,6 +419,22 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({
                                       ))}
                                     </div>
                                   </>
+                                )}
+
+                              {/* НОВЫЙ: Глобальный спиннер поверх карточки при выполнении действия */}
+                              {actionLoading &&
+                                item.itemactions.some(
+                                  (action) =>
+                                    action.actionname === actionLoading
+                                ) && (
+                                  <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center rounded-xl z-60">
+                                    <div className="flex flex-col items-center gap-2">
+                                      <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                      <span className="text-sm text-emerald-600 font-medium">
+                                        Выполняется...
+                                      </span>
+                                    </div>
+                                  </div>
                                 )}
                             </div>
                           );
