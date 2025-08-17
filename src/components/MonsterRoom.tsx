@@ -18,12 +18,19 @@ const MonsterRoom: React.FC<MonsterRoomProps> = ({
   isLoading,
 }) => {
   const roomBgRef = useRef<HTMLImageElement>(null);
+  const [naturalBgSize, setNaturalBgSize] = useState<{
+    width: number;
+    height: number;
+  }>({
+    width: 1536,
+    height: 1024,
+  });
   const [roomBgSize, setRoomBgSize] = useState<{
     width: number;
     height: number;
   }>({
-    width: 1,
-    height: 1,
+    width: 1536,
+    height: 1024,
   });
   const [roomItemSizes, setRoomItemSizes] = useState<
     Record<number, { width: number; height: number }>
