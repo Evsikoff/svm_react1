@@ -507,6 +507,7 @@ const App: React.FC = () => {
           characteristicsChanges={interactionData.characteristicschanges || []}
           inventoryItems={interactionData.inventoryitems || []}
           itemEffects={interactionData.itemeffects || []}
+          itemBonuses={interactionData.impactitembonuses || []}
           onClose={closeRaisingInteraction}
         />
       )}

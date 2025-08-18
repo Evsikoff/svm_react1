@@ -86,11 +86,23 @@ export interface InventoryItem {
 }
 
 // НОВЫЙ ТИП: Эффект предмета
-export interface ItemEffect {
-  effecttext: string;
-  itemname: string;
-  itemimage: string;
-}
+  export interface ItemEffect {
+    effecttext: string;
+    itemname: string;
+    itemimage: string;
+  }
+
+  // НОВЫЙ ТИП: Бонус от предмета
+  export interface ItemBonusChange {
+    characteristicname: string;
+    amount: number;
+  }
+
+  export interface ItemBonus {
+    itemname: string;
+    itemimage: string;
+    characteristicschanges: ItemBonusChange[];
+  }
 
 export interface ImpactResponse {
   errortext: string;
@@ -101,9 +113,10 @@ export interface ImpactResponse {
     name: string;
     amount: number;
   }[];
-  inventoryitems?: InventoryItem[];
-  itemeffects?: ItemEffect[]; // НОВОЕ ПОЛЕ для эффектов предметов
-}
+    inventoryitems?: InventoryItem[];
+    itemeffects?: ItemEffect[]; // НОВОЕ ПОЛЕ для эффектов предметов
+    impactitembonuses?: ItemBonus[]; // НОВОЕ ПОЛЕ для бонусов от предметов
+  }
 
 // Типы для полосы загрузки
 export type BootTaskKey =
