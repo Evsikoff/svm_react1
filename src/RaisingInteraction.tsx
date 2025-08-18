@@ -20,12 +20,24 @@ interface ItemEffect {
   itemimage: string;
 }
 
+interface ItemBonusChange {
+  characteristicname: string;
+  amount: number;
+}
+
+interface ItemBonus {
+  itemname: string;
+  itemimage: string;
+  characteristicschanges: ItemBonusChange[];
+}
+
 interface RaisingInteractionProps {
   videoUrl: string;
   text: string;
   characteristicsChanges: CharacteristicChange[];
   inventoryItems: InventoryItem[];
   itemEffects?: ItemEffect[]; // Новый пропс для эффектов предметов
+  itemBonuses?: ItemBonus[]; // Новый пропс для бонусов от предметов
   onClose: () => void;
 }
 
@@ -35,6 +47,7 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
   characteristicsChanges,
   inventoryItems,
   itemEffects = [], // Значение по умолчанию
+  itemBonuses = [], // Значение по умолчанию
   onClose,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -161,6 +174,56 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
                     <p className="text-sm text-teal-700 font-medium leading-relaxed">
                       {effect.effecttext}
                     </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* НОВЫЙ ФРЕЙМ: Дополнительные бонусы от владения предметами */}
+      {itemBonuses.length > 0 && (
+        <div className="flex justify-center mb-4">
+          <div
+            className={`bg-gradient-to-br from-lime-50 to-emerald-50 p-4 border border-lime-300 shadow-md ${commonWidth}`}
+          >
+            <h2 className="text-lg sm:text-xl font-bold text-lime-700 mb-4 text-center border-b-2 border-lime-200 pb-2">
+              Дополнительные бонусы от владения предметами
+            </h2>
+            <div className="flex flex-wrap justify-center gap-3">
+              {itemBonuses.map((bonus, index) => (
+                <div
+                  key={index}
+                  className="bg-gradient-to-br from-emerald-100 to-lime-100 border border-lime-400 rounded-xl p-3 shadow-sm w-full sm:w-[320px] lg:w-[360px]"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <img
+                      src={bonus.itemimage}
+                      alt={bonus.itemname}
+                      className="w-12 h-12 object-contain rounded-lg bg-white/60 p-1 shadow-sm"
+                      onError={(e) => {
+                        console.error(`Ошибка загрузки изображения предмета: ${bonus.itemimage}`);
+                        e.currentTarget.src = "/fallback-item.png";
+                      }}
+                    />
+                    <h3 className="text-sm font-bold text-lime-800 leading-tight">
+                      {bonus.itemname}
+                    </h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[200px]">
+                      <tbody>
+                        {bonus.characteristicschanges.map((change, idx) => (
+                          <tr key={idx} className="border-b border-lime-200">
+                            <td className="py-1 px-2 text-xs xs:text-sm text-lime-800">
+                              {change.characteristicname}
+                            </td>
+                            <td className="py-1 px-2 text-right text-lime-600">+{change.amount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ))}
