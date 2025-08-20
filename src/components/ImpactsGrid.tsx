@@ -24,7 +24,7 @@ const ImpactsGrid: React.FC<ImpactsGridProps> = ({
   onImpactClick,
 }) => {
   return (
-    <div className="w-full md:w-1/2 mt-4 md:mt-0 grid grid-cols-2 md:grid-cols-4 gap-1 bg-purple-200">
+    <div className="w-full md:w-2/5 mt-4 md:mt-0 grid grid-cols-2 md:grid-cols-5 gap-1 bg-purple-200">
       {impacts.map((impact) => (
         <div
           key={impact.id}

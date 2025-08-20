@@ -540,7 +540,7 @@ const App: React.FC = () => {
                 monsterImage={monsterImage}
                 roomItems={roomItems}
                 isLoading={isMonsterLoading}
-                className="w-full md:w-1/2 border border-gray-300 bg-orange-100"
+                className="w-full md:w-2/5 border border-gray-300 bg-orange-100"
               />
 
               {/* Характеристики монстра перемещены ниже комнаты, но вне CompositeRoomRenderer */}
@@ -566,7 +566,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Набор доступных воспитательных взаимодействий с монстром */}
-              <div className="w-full md:w-1/2 mt-4 md:mt-0 grid grid-cols-2 md:grid-cols-4 gap-1 bg-purple-200">
+              <div className="w-full md:w-2/5 mt-4 md:mt-0 grid grid-cols-2 md:grid-cols-5 gap-1 bg-purple-200">
                 {impacts.map((impact) => {
                   // Получаем иконку выносливости для отображения минимальных требований
                   const enduranceIcon =
@@ -625,7 +625,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Характеристики монстра для десктопа */}
-              <div className="hidden md:block mt-4 space-y-2 p-2 md:ml-1 md:w-1/4">
+              <div className="hidden md:block mt-4 space-y-2 p-2 md:ml-1 md:w-1/5">
                 {characteristics
                   .slice()
                   .sort((a, b) => b.value - a.value)

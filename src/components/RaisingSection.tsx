@@ -134,7 +134,7 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
 
       <div className="mt-4 flex flex-col md:flex-row md:space-x-1">
         {/* Комната монстра */}
-        <div className="w-full md:w-1/2 border border-gray-300 bg-orange-100">
+        <div className="w-full md:w-2/5 border border-gray-300 bg-orange-100">
           {roomImage && monsterImage && (
             <div
               className="relative"
@@ -193,7 +193,7 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
         </div>
 
         {/* Набор доступных воспитательных взаимодействий с монстром */}
-        <div className="w-full md:w-1/2 mt-4 md:mt-0 grid grid-cols-2 md:grid-cols-4 gap-1 bg-purple-200">
+        <div className="w-full md:w-2/5 mt-4 md:mt-0 grid grid-cols-2 md:grid-cols-5 gap-1 bg-purple-200">
           {impacts.map((impact) => (
             <div
               key={impact.id}
