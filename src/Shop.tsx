@@ -19,6 +19,7 @@ type InventoryItem = {
   inventorydescription: string;
   inventoryprice: number;
   inventorytype: number; // 1..N — влияет на фон бейджа
+  active?: boolean; // признак доступности товара
 };
 
 type ShopResponse = {
@@ -102,17 +103,26 @@ const Shop: React.FC<Props> = ({ userId }) => {
   useEffect(() => {
     let cancelled = false;
     const loadShop = async () => {
+      if (!userId) {
+        setShopLoading(false);
+        setShopError("userId отсутствует");
+        return;
+      }
       setShopLoading(true);
       try {
         const resp = await withRetry(
           () =>
-            axios.get<ShopResponse>(
-              "https://functions.yandexcloud.net/d4eq0b2po3vrtvgqbori"
+            axios.post<ShopResponse>(
+              "https://functions.yandexcloud.net/d4eq0b2po3vrtvgqbori",
+              { userId }
             ),
           (r) => Array.isArray((r as any)?.data?.inventoryitems),
           "Ошибка при загрузке магазина"
         );
-        if (!cancelled) setItems(resp.data.inventoryitems || []);
+        if (!cancelled) {
+          setItems(resp.data.inventoryitems || []);
+          setShopError("");
+        }
       } catch (e: any) {
         if (!cancelled)
           setShopError(e.message || "Ошибка при загрузке магазина");
@@ -124,7 +134,7 @@ const Shop: React.FC<Props> = ({ userId }) => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   // ===== Покупка (с ретраями; показывает модалку с текстом ответа) =====
   const handleBuy = async (item: InventoryItem) => {
@@ -248,22 +258,26 @@ const Shop: React.FC<Props> = ({ userId }) => {
                 ) : (
                   <ul className="grid grid-cols-1 gap-4">
                     {items.map((it) => {
+                      const isActive = it.active !== false;
                       const affordable = it.inventoryprice <= money;
                       const isLoading = actionLoading === it.inventoryid;
+                      const clickable = isActive && affordable;
                       return (
                         <li
                           key={it.inventoryid}
                           className={`${badgeBg(
                             it.inventorytype
                           )} rounded-2xl p-4 shadow ${
-                            !affordable
-                              ? "opacity-50 cursor-not-allowed"
-                              : "cursor-pointer hover:shadow-lg"
+                            clickable
+                              ? "cursor-pointer hover:shadow-lg"
+                              : "opacity-50 cursor-not-allowed"
+                          } ${
+                            isActive ? "" : "grayscale"
                           } relative`}
                           onClick={() =>
-                            affordable ? handleBuy(it) : undefined
+                            clickable ? handleBuy(it) : undefined
                           }
-                          aria-disabled={!affordable}
+                          aria-disabled={!clickable}
                         >
                           <div className="flex items-start gap-4">
                             <img
