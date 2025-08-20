@@ -201,6 +201,8 @@ const App: React.FC = () => {
         const loadImage = (src: string) =>
           new Promise<HTMLImageElement>((resolve, reject) => {
             const img = new Image();
+            // avoid canvas tainting so we can export the composite
+            img.crossOrigin = "anonymous";
             img.onload = () => resolve(img);
             img.onerror = () => reject(new Error(`Failed to load image ${src}`));
             img.src = src;
@@ -232,6 +234,8 @@ const App: React.FC = () => {
         setRoomComposite(canvas.toDataURL());
       } catch (err) {
         console.error("Ошибка формирования изображения комнаты", err);
+        // fallback to displaying the background so UI doesn't hang
+        setRoomComposite(roomImage);
       }
     };
 
