@@ -7,6 +7,21 @@ export const invalidateImageCache = (url: string): string => {
   return `${url}${separator}t=${timestamp}`;
 };
 
+// Простая генерация отпечатка браузера
+export const getFingerprint = (): string => {
+  const components = [
+    navigator.userAgent,
+    navigator.language,
+    String(screen.colorDepth),
+    String(screen.width),
+    String(screen.height),
+    String(screen.availWidth),
+    String(screen.availHeight),
+    String(new Date().getTimezoneOffset()),
+  ];
+  return btoa(components.join("|"));
+};
+
 // Форматирование таймера
 export const formatTimer = (timeInSeconds: number): string => {
   const hours = Math.floor(timeInSeconds / 3600);

@@ -11,7 +11,7 @@ import {
   ImpactResponse,
 } from "../types";
 import { API_URLS } from "../constants";
-import { withRetry, invalidateImageCache } from "../utils";
+import { withRetry, invalidateImageCache, getFingerprint } from "../utils";
 
 export class ApiService {
   private onError?: (error: string) => void;
@@ -23,11 +23,9 @@ export class ApiService {
   async init(): Promise<InitResponse> {
     return withRetry(
       async () => {
+        const fingerprint = getFingerprint();
         const response = await axios.post<InitResponse>(API_URLS.init, {
-          yandexUserId: "ajeksdnx-somerandomid-29112024",
-          yandexUserName: "Иван Петров",
-          yandexUserPhotoURL:
-            "https://avatars.yandex.net/get-yapic/12345/some-image-id/islands-200",
+          fingerprint,
         });
         return response.data;
       },
