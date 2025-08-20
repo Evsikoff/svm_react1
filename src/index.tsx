@@ -534,35 +534,36 @@ const App: React.FC = () => {
             </div>
 
             <div className="mt-4 flex flex-col md:flex-row md:space-x-1">
-              {/* Комната монстра - теперь используем CompositeRoomRenderer */}
-              <CompositeRoomRenderer
-                roomImage={roomImage}
-                monsterImage={monsterImage}
-                roomItems={roomItems}
-                isLoading={isMonsterLoading}
-                className="w-full md:w-1/2 border border-gray-300 bg-orange-100"
-              />
+              {/* Комната монстра и характеристики */}
+              <div className="w-full md:w-1/2 border border-gray-300 bg-orange-100 flex flex-col">
+                <CompositeRoomRenderer
+                  roomImage={roomImage}
+                  monsterImage={monsterImage}
+                  roomItems={roomItems}
+                  isLoading={isMonsterLoading}
+                  className="w-full"
+                />
 
-              {/* Характеристики монстра перемещены ниже комнаты, но вне CompositeRoomRenderer */}
-              <div className="mt-4 space-y-2 p-2 w-full md:hidden">
-                {characteristics
-                  .slice()
-                  .sort((a, b) => b.value - a.value)
-                  .map((char) => (
-                    <div
-                      key={char.id}
-                      className="flex items-center space-x-2 bg-purple-100 p-2 shadow border border-gray-300"
-                    >
-                      <img
-                        src={char.icon}
-                        alt={char.name}
-                        className="w-8 h-8"
-                      />
-                      <span className="text-purple-700 font-semibold">
-                        {char.name}: {char.value}
-                      </span>
-                    </div>
-                  ))}
+                <div className="mt-4 space-y-2 p-2">
+                  {characteristics
+                    .slice()
+                    .sort((a, b) => b.value - a.value)
+                    .map((char) => (
+                      <div
+                        key={char.id}
+                        className="flex items-center space-x-2 bg-purple-100 p-2 shadow border border-gray-300"
+                      >
+                        <img
+                          src={char.icon}
+                          alt={char.name}
+                          className="w-8 h-8"
+                        />
+                        <span className="text-purple-700 font-semibold">
+                          {char.name}: {char.value}
+                        </span>
+                      </div>
+                    ))}
+                </div>
               </div>
 
               {/* Набор доступных воспитательных взаимодействий с монстром */}
@@ -622,28 +623,6 @@ const App: React.FC = () => {
                     </div>
                   );
                 })}
-              </div>
-
-              {/* Характеристики монстра для десктопа */}
-              <div className="hidden md:block mt-4 space-y-2 p-2 md:ml-1 md:w-1/4">
-                {characteristics
-                  .slice()
-                  .sort((a, b) => b.value - a.value)
-                  .map((char) => (
-                    <div
-                      key={char.id}
-                      className="flex items-center space-x-2 bg-purple-100 p-2 shadow border border-gray-300"
-                    >
-                      <img
-                        src={char.icon}
-                        alt={char.name}
-                        className="w-8 h-8"
-                      />
-                      <span className="text-purple-700 font-semibold">
-                        {char.name}: {char.value}
-                      </span>
-                    </div>
-                  ))}
               </div>
             </div>
           </div>
