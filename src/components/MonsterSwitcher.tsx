@@ -19,7 +19,7 @@ const MonsterSwitcher: React.FC<MonsterSwitcherProps> = ({
       {monsters.map((monster, index) => (
         <div
           key={monster.name}
-          className={`relative min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 cursor-pointer border border-gray-300 ${
+          className={`relative flex flex-col min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 cursor-pointer border border-gray-300 ${
             selectedMonsterId === monstersId[index]
               ? "border-2 border-purple-500"
               : ""
@@ -29,9 +29,12 @@ const MonsterSwitcher: React.FC<MonsterSwitcherProps> = ({
           <img
             src={monster.face}
             alt={monster.name}
-            className="w-[229px] h-[129px]"
+            className="w-full h-[129px] object-cover border border-gray-300"
           />
-          <div className="text-center font-handwritten text-lg">
+          <div
+            className="flex-1 flex items-center justify-center text-center font-handwritten leading-tight"
+            style={{ fontSize: "clamp(0.8rem, 2vw, 1.2rem)" }}
+          >
             {monster.name}
           </div>
         </div>
