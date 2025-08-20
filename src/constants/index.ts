@@ -14,7 +14,7 @@ export const BOOT_TASKS_ORDER: BootTask[] = [
 
 // API URLs
 export const API_URLS = {
-  init: "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/init",
+  init: "https://functions.yandexcloud.net/d4eft5881ootoasr4lcn",
   mainmenu:
     "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/mainmenu",
   notifications:
