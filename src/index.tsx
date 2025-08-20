@@ -16,6 +16,7 @@ import ErrorModal from "./components/ErrorModal";
 import Spinner from "./components/Spinner";
 import MobileMainMenu from "./components/MobileMainMenu";
 import DesktopMenu from "./components/DesktopMenu";
+import CompositeRoomRenderer from "./components/CompositeRoomRenderer"; // Исправленный импорт
 
 // Типы
 import {
@@ -72,16 +73,6 @@ const App: React.FC = () => {
     null
   );
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
-  const [roomItemDimensions, setRoomItemDimensions] = useState<
-    Record<
-      string,
-      {
-        displayWidth: number;
-        displayHeight: number;
-      }
-    >
-  >({});
 
   // --- состояние экрана загрузки ---
   const [booting, setBooting] = useState<boolean>(true);
@@ -200,52 +191,26 @@ const App: React.FC = () => {
   //Эффект для предметов в комнате монстра
   useEffect(() => {
     if (roomItems.length === 0) {
-      setRoomItemDimensions({});
       return;
     }
 
     const loadDimensions = async () => {
-      const dimensions: Record<
-        string,
-        { displayWidth: number; displayHeight: number }
-      > = {};
-
       for (const item of roomItems) {
         try {
           const img = new Image();
           await new Promise<void>((resolve, reject) => {
             img.onload = () => {
-              // Вычисляем пропорциональные размеры
-              const maxSize = 177;
-              const scale = Math.min(
-                maxSize / img.naturalWidth,
-                maxSize / img.naturalHeight,
-                1
-              );
-
-              dimensions[item.spriteUrl] = {
-                displayWidth: Math.round(img.naturalWidth * scale),
-                displayHeight: Math.round(img.naturalHeight * scale),
-              };
               resolve();
             };
             img.onerror = () => {
-              // Fallback размеры
-              dimensions[item.spriteUrl] = {
-                displayWidth: 50,
-                displayHeight: 50,
-              };
               resolve();
             };
             img.src = item.spriteUrl;
           });
         } catch (error) {
           console.warn(`Ошибка загрузки размеров для ${item.spriteUrl}`);
-          dimensions[item.spriteUrl] = { displayWidth: 50, displayHeight: 50 };
         }
       }
-
-      setRoomItemDimensions(dimensions);
     };
 
     loadDimensions();
@@ -569,114 +534,35 @@ const App: React.FC = () => {
             </div>
 
             <div className="mt-4 flex flex-col md:flex-row md:space-x-1">
-              {/* Комната монстра */}
-              <div className="w-full md:w-1/2 border border-gray-300 bg-orange-100">
-                {roomImage && monsterImage && (
-                  <div
-                    className="relative"
-                    style={{
-                      width: "100%",
-                      aspectRatio: "4/3",
-                      background: "#fff",
-                    }}
-                  >
-                    {isMonsterLoading ? (
-                      <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-                        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    ) : (
-                      <>
-                        <img
-                          src={roomImage}
-                          alt="Room"
-                          className="w-full h-full object-contain"
-                          style={{
-                            display: "block",
-                            zIndex: 1,
-                            position: "relative",
-                            pointerEvents: "none",
-                            background: "#fff",
-                          }}
-                        />
-                        {/* Предметы в комнате */}
-                        {roomItems.map((item) => {
-                          const dimensions = roomItemDimensions[item.spriteUrl];
-                          if (!dimensions) {
-                            // Пока размеры не загружены, показываем с базовыми стилями
-                            return (
-                              <img
-                                key={item.id}
-                                src={item.spriteUrl}
-                                alt={item.name}
-                                title={item.name}
-                                style={{
-                                  position: "absolute",
-                                  left: `${item.xaxis}%`,
-                                  top: `${item.yaxis}%`,
-                                  transform: "translate(-50%, -50%)",
-                                  zIndex: 5,
-                                  pointerEvents: "auto",
-                                  maxWidth: "80px",
-                                  maxHeight: "80px",
-                                  objectFit: "contain",
-                                }}
-                              />
-                            );
-                          }
+              {/* Комната монстра - теперь используем CompositeRoomRenderer */}
+              <CompositeRoomRenderer
+                roomImage={roomImage}
+                monsterImage={monsterImage}
+                roomItems={roomItems}
+                isLoading={isMonsterLoading}
+                className="w-full md:w-1/2 border border-gray-300 bg-orange-100"
+              />
 
-                          return (
-                            <img
-                              key={item.id}
-                              src={item.spriteUrl}
-                              alt={item.name}
-                              title={item.name}
-                              style={{
-                                position: "absolute",
-                                left: `${item.xaxis}%`,
-                                top: `${item.yaxis}%`,
-                                transform: "translate(-50%, -50%)",
-                                zIndex: 5,
-                                pointerEvents: "auto",
-                                width: `${dimensions.displayWidth}px`,
-                                height: `${dimensions.displayHeight}px`,
-                                objectFit: "contain",
-                              }}
-                            />
-                          );
-                        })}
-                        {/* Монстр поверх всего */}
-                        <img
-                          src={monsterImage}
-                          alt="Monster"
-                          className="absolute bottom-[10%] left-1/2 w-1/2 transform -translate-x-1/2"
-                          style={{ zIndex: 10 }}
-                        />
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* Характеристики монстра */}
-                <div className="mt-4 space-y-2 p-2">
-                  {characteristics
-                    .slice()
-                    .sort((a, b) => b.value - a.value)
-                    .map((char) => (
-                      <div
-                        key={char.id}
-                        className="flex items-center space-x-2 bg-purple-100 p-2 shadow border border-gray-300"
-                      >
-                        <img
-                          src={char.icon}
-                          alt={char.name}
-                          className="w-8 h-8"
-                        />
-                        <span className="text-purple-700 font-semibold">
-                          {char.name}: {char.value}
-                        </span>
-                      </div>
-                    ))}
-                </div>
+              {/* Характеристики монстра перемещены ниже комнаты, но вне CompositeRoomRenderer */}
+              <div className="mt-4 space-y-2 p-2 w-full md:hidden">
+                {characteristics
+                  .slice()
+                  .sort((a, b) => b.value - a.value)
+                  .map((char) => (
+                    <div
+                      key={char.id}
+                      className="flex items-center space-x-2 bg-purple-100 p-2 shadow border border-gray-300"
+                    >
+                      <img
+                        src={char.icon}
+                        alt={char.name}
+                        className="w-8 h-8"
+                      />
+                      <span className="text-purple-700 font-semibold">
+                        {char.name}: {char.value}
+                      </span>
+                    </div>
+                  ))}
               </div>
 
               {/* Набор доступных воспитательных взаимодействий с монстром */}
@@ -736,6 +622,28 @@ const App: React.FC = () => {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Характеристики монстра для десктопа */}
+              <div className="hidden md:block mt-4 space-y-2 p-2 md:ml-1 md:w-1/4">
+                {characteristics
+                  .slice()
+                  .sort((a, b) => b.value - a.value)
+                  .map((char) => (
+                    <div
+                      key={char.id}
+                      className="flex items-center space-x-2 bg-purple-100 p-2 shadow border border-gray-300"
+                    >
+                      <img
+                        src={char.icon}
+                        alt={char.name}
+                        className="w-8 h-8"
+                      />
+                      <span className="text-purple-700 font-semibold">
+                        {char.name}: {char.value}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
           </div>
