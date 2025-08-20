@@ -73,15 +73,7 @@ const App: React.FC = () => {
   );
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const [roomItemDimensions, setRoomItemDimensions] = useState<
-    Record<
-      string,
-      {
-        displayWidth: number;
-        displayHeight: number;
-      }
-    >
-  >({});
+  const [roomComposite, setRoomComposite] = useState<string>("");
 
   // --- состояние экрана загрузки ---
   const [booting, setBooting] = useState<boolean>(true);
@@ -197,59 +189,55 @@ const App: React.FC = () => {
       cancelled = true;
     };
   }, []);
-  //Эффект для предметов в комнате монстра
+  // Формирование изображения комнаты с предметами
   useEffect(() => {
-    if (roomItems.length === 0) {
-      setRoomItemDimensions({});
+    if (!roomImage) {
+      setRoomComposite("");
       return;
     }
 
-    const loadDimensions = async () => {
-      const dimensions: Record<
-        string,
-        { displayWidth: number; displayHeight: number }
-      > = {};
-
-      for (const item of roomItems) {
-        try {
-          const img = new Image();
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => {
-              // Вычисляем пропорциональные размеры
-              const maxSize = 177;
-              const scale = Math.min(
-                maxSize / img.naturalWidth,
-                maxSize / img.naturalHeight,
-                1
-              );
-
-              dimensions[item.spriteUrl] = {
-                displayWidth: Math.round(img.naturalWidth * scale),
-                displayHeight: Math.round(img.naturalHeight * scale),
-              };
-              resolve();
-            };
-            img.onerror = () => {
-              // Fallback размеры
-              dimensions[item.spriteUrl] = {
-                displayWidth: 50,
-                displayHeight: 50,
-              };
-              resolve();
-            };
-            img.src = item.spriteUrl;
+    const generateComposite = async () => {
+      try {
+        const loadImage = (src: string) =>
+          new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error(`Failed to load image ${src}`));
+            img.src = src;
           });
-        } catch (error) {
-          console.warn(`Ошибка загрузки размеров для ${item.spriteUrl}`);
-          dimensions[item.spriteUrl] = { displayWidth: 50, displayHeight: 50 };
-        }
-      }
 
-      setRoomItemDimensions(dimensions);
+        const bg = await loadImage(roomImage);
+        const canvas = document.createElement("canvas");
+        canvas.width = bg.naturalWidth;
+        canvas.height = bg.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(bg, 0, 0);
+
+        for (const item of roomItems) {
+          try {
+            const sprite = await loadImage(item.spriteUrl);
+            const x = (item.xaxis / 100) * canvas.width;
+            const y = (item.yaxis / 100) * canvas.height;
+            ctx.drawImage(
+              sprite,
+              x - sprite.naturalWidth / 2,
+              y - sprite.naturalHeight / 2
+            );
+          } catch (err) {
+            console.warn(`Не удалось загрузить спрайт ${item.spriteUrl}`, err);
+          }
+        }
+
+        setRoomComposite(canvas.toDataURL());
+      } catch (err) {
+        console.error("Ошибка формирования изображения комнаты", err);
+      }
     };
 
-    loadDimensions();
-  }, [roomItems]);
+    setRoomComposite("");
+    generateComposite();
+  }, [roomImage, roomItems]);
 
   // Таймер пополнения энергии
   useEffect(() => {
@@ -305,6 +293,7 @@ const App: React.FC = () => {
     if (!selectedMonsterId) return;
     try {
       const roomRes = await apiService.getMonsterRoom(selectedMonsterId);
+      setRoomComposite("");
       setMonsterImage(roomRes.monsterimage);
       setRoomImage(roomRes.roomimage);
       setRoomItems(roomRes.roomitems || []);
@@ -580,14 +569,14 @@ const App: React.FC = () => {
                       background: "#fff",
                     }}
                   >
-                    {isMonsterLoading ? (
+                    {isMonsterLoading || !roomComposite ? (
                       <div className="absolute inset-0 flex items-center justify-center bg-white/80">
                         <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : (
                       <>
                         <img
-                          src={roomImage}
+                          src={roomComposite}
                           alt="Room"
                           className="w-full h-full object-contain"
                           style={{
@@ -598,52 +587,6 @@ const App: React.FC = () => {
                             background: "#fff",
                           }}
                         />
-                        {/* Предметы в комнате */}
-                        {roomItems.map((item) => {
-                          const dimensions = roomItemDimensions[item.spriteUrl];
-                          if (!dimensions) {
-                            // Пока размеры не загружены, показываем с базовыми стилями
-                            return (
-                              <img
-                                key={item.id}
-                                src={item.spriteUrl}
-                                alt={item.name}
-                                title={item.name}
-                                style={{
-                                  position: "absolute",
-                                  left: `${item.xaxis}%`,
-                                  top: `${item.yaxis}%`,
-                                  transform: "translate(-50%, -50%)",
-                                  zIndex: 5,
-                                  pointerEvents: "auto",
-                                  maxWidth: "80px",
-                                  maxHeight: "80px",
-                                  objectFit: "contain",
-                                }}
-                              />
-                            );
-                          }
-
-                          return (
-                            <img
-                              key={item.id}
-                              src={item.spriteUrl}
-                              alt={item.name}
-                              title={item.name}
-                              style={{
-                                position: "absolute",
-                                left: `${item.xaxis}%`,
-                                top: `${item.yaxis}%`,
-                                transform: "translate(-50%, -50%)",
-                                zIndex: 5,
-                                pointerEvents: "auto",
-                                width: `${dimensions.displayWidth}px`,
-                                height: `${dimensions.displayHeight}px`,
-                                objectFit: "contain",
-                              }}
-                            />
-                          );
-                        })}
                         {/* Монстр поверх всего */}
                         <img
                           src={monsterImage}
