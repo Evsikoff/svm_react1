@@ -129,10 +129,14 @@ export class ApiService {
           ...data,
           monsterimage: invalidateImageCache(data.monsterimage),
           roomimage: invalidateImageCache(data.roomimage),
-          roomitems: (data.roomitems || []).map((item) => ({
-            ...item,
-            spriteUrl: invalidateImageCache(item.spriteUrl),
-          })),
+          roomitems: (data.roomitems || []).map((item: any) => {
+            const rawSprite = item.spriteUrl || item.spriteurl || "";
+            return {
+              ...item,
+              // backend may provide either `spriteUrl` or `spriteurl`
+              spriteUrl: rawSprite ? invalidateImageCache(rawSprite) : "",
+            };
+          }),
         };
       },
       (d) => !!d && !!d.monsterimage && !!d.roomimage,

@@ -217,6 +217,7 @@ const App: React.FC = () => {
         ctx.drawImage(bg, 0, 0);
 
         for (const item of roomItems) {
+          if (!item.spriteUrl) continue;
           try {
             const sprite = await loadImage(item.spriteUrl);
             const x = (item.xaxis / 100) * canvas.width;
