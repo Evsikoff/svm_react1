@@ -29,11 +29,11 @@ const MonsterSwitcher: React.FC<MonsterSwitcherProps> = ({
           <img
             src={monster.face}
             alt={monster.name}
-            className="w-full h-[129px] object-cover border border-gray-300"
+            className="w-full h-[129px] object-cover border border-gray-400"
           />
           <div
-            className="flex-1 flex items-center justify-center text-center font-handwritten leading-tight"
-            style={{ fontSize: "clamp(0.8rem, 2vw, 1.2rem)" }}
+            className="flex-1 flex items-center justify-center text-center font-handwritten leading-none"
+            style={{ fontSize: "clamp(0.8rem, 5vw, 4rem)" }}
           >
             {monster.name}
           </div>
