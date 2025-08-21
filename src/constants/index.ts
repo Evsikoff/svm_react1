@@ -40,6 +40,6 @@ export const MENU_SEQUENCES = {
   RAISING: 1,
   ARENA: 2,
   SHOP: 3,
-  INVENTORY: 4,
-  ACCOUNT: 5,
+  ACCOUNT: 4,
+  INVENTORY: 5,
 } as const;
