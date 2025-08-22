@@ -37,10 +37,13 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState<string>("");
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [yandexLoading, setYandexLoading] = useState(false);
 
-  // Константы Google OAuth
+  // Константы OAuth
   const GOOGLE_CLIENT_ID =
     "125465866043-pe37ut04loiu1vg8rni1vf7tt7dv247i.apps.googleusercontent.com";
+  const YANDEX_CLIENT_ID = "3d7ec2c7ceb34ed59b445d7fb152ac9f";
+  const YANDEX_CLIENT_SECRET = "1d85ca9e132b4e419c960c38832f8d71";
 
   // Загрузка Google API скрипта (убираем видимую кнопку)
   useEffect(() => {
@@ -122,6 +125,115 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
   // Загрузка данных при монтировании компонента
   useEffect(() => {
     loadUserData();
+  }, [userId]);
+
+  // Обработка возврата с авторизации Yandex
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    const error = url.searchParams.get("error");
+
+    if (error) {
+      setModalMessage("Авторизация Yandex не удалась");
+      setShowModal(true);
+      url.searchParams.delete("error");
+      window.history.replaceState(
+        null,
+        "",
+        url.pathname +
+          (url.searchParams.toString()
+            ? `?${url.searchParams.toString()}`
+            : "") +
+          url.hash
+      );
+      return;
+    }
+
+    if (code && userId) {
+      setYandexLoading(true);
+
+      const fetchYandexData = async () => {
+        try {
+          const tokenResponse = await fetch("https://oauth.yandex.ru/token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              grant_type: "authorization_code",
+              code,
+              client_id: YANDEX_CLIENT_ID,
+              client_secret: YANDEX_CLIENT_SECRET,
+            }),
+          });
+
+          if (!tokenResponse.ok) {
+            throw new Error(`HTTP error! status: ${tokenResponse.status}`);
+          }
+
+          const tokenData = await tokenResponse.json();
+          const accessToken = tokenData.access_token;
+
+          const infoResponse = await fetch(
+            "https://login.yandex.ru/info?format=json",
+            {
+              headers: {
+                Authorization: `OAuth ${accessToken}`,
+              },
+            }
+          );
+
+          if (!infoResponse.ok) {
+            throw new Error(`HTTP error! status: ${infoResponse.status}`);
+          }
+
+          const info = await infoResponse.json();
+          const avatarUrl = info.is_avatar_empty
+            ? ""
+            : `https://avatars.yandex.net/get-yapic/${info.default_avatar_id}/islands-200`;
+
+          await fetch(
+            "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                userId,
+                newserviceid: info.id,
+                newservicename: info.display_name || info.login,
+                newserviceimage: avatarUrl,
+                service: "yandex",
+              }),
+            }
+          );
+
+          setModalMessage("Yandex аккаунт успешно подключен");
+          setShowModal(true);
+          await loadUserData();
+        } catch (err) {
+          console.error("Ошибка при подключении Yandex аккаунта:", err);
+          setModalMessage("Ошибка при подключении Yandex аккаунта");
+          setShowModal(true);
+        } finally {
+          setYandexLoading(false);
+          url.searchParams.delete("code");
+          url.searchParams.delete("state");
+          window.history.replaceState(
+            null,
+            "",
+            url.pathname +
+              (url.searchParams.toString()
+                ? `?${url.searchParams.toString()}`
+                : "") +
+              url.hash
+          );
+        }
+      };
+
+      fetchYandexData();
+    }
   }, [userId]);
 
   // Функция для декодирования base64url с поддержкой UTF-8
@@ -239,6 +351,15 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     }
   };
 
+  // Обработчик нажатия на кнопку "Подключить Yandex"
+  const handleConnectYandex = () => {
+    const redirectUri = window.location.origin + window.location.pathname;
+    const authUrl =
+      `https://oauth.yandex.ru/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    setYandexLoading(true);
+    window.location.href = authUrl;
+  };
+
   // Общая функция для проверки подключения сервиса
   const isServiceConnected = (service: "google" | "yandex" | "vk") => {
     if (!userData) return false;
@@ -299,8 +420,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
         handleConnectGoogle();
         break;
       case "yandex":
-        setModalMessage("Подключение Yandex в разработке");
-        setShowModal(true);
+        handleConnectYandex();
         break;
       case "vk":
         setModalMessage("Подключение VK в разработке");
@@ -474,9 +594,17 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
               ) : (
                 <button
                   onClick={() => handleConnect("yandex")}
-                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors duration-200 text-sm"
+                  disabled={yandexLoading}
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors duration-200 text-sm flex items-center gap-2"
                 >
-                  Подключить
+                  {yandexLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Подключаем...
+                    </>
+                  ) : (
+                    "Подключить"
+                  )}
                 </button>
               )}
             </div>
