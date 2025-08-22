@@ -341,29 +341,12 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-8">
-      {/* Фрейм "Данные о пользователе" */}
+      {/* Фрейм "Имя пользователя" */}
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 shadow-lg">
         <h2 className="text-xl font-bold text-blue-800 mb-6 text-center">
-          Данные о пользователе
+          Имя пользователя
         </h2>
 
-        {/* Аватар пользователя */}
-        <div className="flex justify-center mb-6">
-          <img
-            src={
-              userData.userphotourl ||
-              "https://storage.yandexcloud.net/svm/img/default-avatar.png"
-            }
-            alt="Аватар пользователя"
-            className="w-32 h-32 rounded-full object-cover border-4 border-blue-300 shadow-md"
-            onError={(e) => {
-              e.currentTarget.src =
-                "https://storage.yandexcloud.net/svm/img/default-avatar.png";
-            }}
-          />
-        </div>
-
-        {/* Имя пользователя */}
         <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
           <div className="w-full sm:w-auto flex-grow">
             <input
