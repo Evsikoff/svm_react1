@@ -122,20 +122,24 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     setGoogleLoading(true);
     
     try {
-      // Декодируем JWT токен для получения информации о пользователе
+      // Декодируем JWT токен с учетом Unicode-символов
       const credential = credentialResponse.credential;
-      const payload = JSON.parse(atob(credential.split('.')[1]));
-      
-      // Правильно кодируем имя пользователя в UTF-8
-      const userName = payload.name || "";
-      const encodedUserName = encodeURIComponent(userName);
-      
+      const base64Url = credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const payload = JSON.parse(jsonPayload);
+
       const googleUserData = {
         userId: userId,
-        newserviceid: payload.sub, // Google ID пользователя
-        newservicename: decodeURIComponent(encodedUserName), // Имя пользователя с правильной кодировкой
-        newserviceimage: payload.picture, // URL аватара
-        service: "google"
+        newserviceid: payload.sub,
+        newservicename: payload.name || "",
+        newserviceimage: payload.picture,
+        service: "google",
       };
 
       console.log("Отправляем данные в Yandex функцию:", googleUserData);
