@@ -38,12 +38,15 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
   const [modalMessage, setModalMessage] = useState<string>("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [yandexLoading, setYandexLoading] = useState(false);
+  const [vkLoading, setVkLoading] = useState(false);
 
   // Константы OAuth
   const GOOGLE_CLIENT_ID =
     "125465866043-pe37ut04loiu1vg8rni1vf7tt7dv247i.apps.googleusercontent.com";
   const YANDEX_CLIENT_ID = "3d7ec2c7ceb34ed59b445d7fb152ac9f";
   const YANDEX_CLIENT_SECRET = "1d85ca9e132b4e419c960c38832f8d71";
+  const VK_CLIENT_ID = "54069665";
+  const VK_CLIENT_SECRET = "wD4EGCDwIg5lpTO1s8tj";
 
   // Загрузка Google API скрипта (убираем видимую кнопку)
   useEffect(() => {
@@ -127,9 +130,114 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     loadUserData();
   }, [userId]);
 
+  // Обработка возврата с авторизации VK
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const state = url.searchParams.get("state");
+    const code = url.searchParams.get("code");
+    const error = url.searchParams.get("error");
+
+    if (state !== "vk") return;
+
+    if (error) {
+      setModalMessage("Авторизация VK не удалась");
+      setShowModal(true);
+      url.searchParams.delete("error");
+      url.searchParams.delete("state");
+      window.history.replaceState(
+        null,
+        "",
+        url.pathname +
+          (url.searchParams.toString()
+            ? `?${url.searchParams.toString()}`
+            : "") +
+          url.hash
+      );
+      return;
+    }
+
+    if (code && userId) {
+      setVkLoading(true);
+      const redirectUri = window.location.origin + window.location.pathname;
+
+      const fetchVkData = async () => {
+        try {
+          const tokenResponse = await fetch(
+            `https://oauth.vk.com/access_token?client_id=${VK_CLIENT_ID}&client_secret=${VK_CLIENT_SECRET}&redirect_uri=${encodeURIComponent(
+              redirectUri
+            )}&code=${code}`
+          );
+
+          const tokenData = await tokenResponse.json();
+          if (tokenData.error) {
+            throw new Error(tokenData.error_description || "Token error");
+          }
+
+          const accessToken = tokenData.access_token;
+          const vkUserId = tokenData.user_id;
+
+          const userResponse = await fetch(
+            `https://api.vk.com/method/users.get?user_ids=${vkUserId}&fields=photo_100&access_token=${accessToken}&v=5.131`
+          );
+          const userJson = await userResponse.json();
+          const userInfo =
+            userJson.response && userJson.response.length > 0
+              ? userJson.response[0]
+              : null;
+
+          const avatar = userInfo?.photo_100 || "";
+          const fullName =
+            `${userInfo?.first_name || ""} ${userInfo?.last_name || ""}`.trim();
+
+          await fetch(
+            "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                userId,
+                newserviceid: String(vkUserId),
+                newservicename: fullName,
+                newserviceimage: avatar,
+                service: "vk",
+              }),
+            }
+          );
+
+          setModalMessage("VK аккаунт успешно подключен");
+          setShowModal(true);
+          await loadUserData();
+        } catch (err) {
+          console.error("Ошибка при подключении VK аккаунта:", err);
+          setModalMessage("Ошибка при подключении VK аккаунта");
+          setShowModal(true);
+        } finally {
+          setVkLoading(false);
+          url.searchParams.delete("code");
+          url.searchParams.delete("state");
+          window.history.replaceState(
+            null,
+            "",
+            url.pathname +
+              (url.searchParams.toString()
+                ? `?${url.searchParams.toString()}`
+                : "") +
+              url.hash
+          );
+        }
+      };
+
+      fetchVkData();
+    }
+  }, [userId]);
+
   // Обработка возврата с авторизации Yandex
   useEffect(() => {
     const url = new URL(window.location.href);
+    const state = url.searchParams.get("state");
+    if (state === "vk") return;
     const code = url.searchParams.get("code");
     const error = url.searchParams.get("error");
 
@@ -360,6 +468,17 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     window.location.href = authUrl;
   };
 
+  // Обработчик нажатия на кнопку "Подключить VK"
+  const handleConnectVK = () => {
+    const redirectUri = window.location.origin + window.location.pathname;
+    const authUrl =
+      `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&scope=&response_type=code&v=5.131&state=vk`;
+    setVkLoading(true);
+    window.location.href = authUrl;
+  };
+
   // Общая функция для проверки подключения сервиса
   const isServiceConnected = (service: "google" | "yandex" | "vk") => {
     if (!userData) return false;
@@ -423,8 +542,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
         handleConnectYandex();
         break;
       case "vk":
-        setModalMessage("Подключение VK в разработке");
-        setShowModal(true);
+        handleConnectVK();
         break;
     }
   };
@@ -638,9 +756,17 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
               ) : (
                 <button
                   onClick={() => handleConnect("vk")}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm"
+                  disabled={vkLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm flex items-center gap-2"
                 >
-                  Подключить
+                  {vkLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Подключаем...
+                    </>
+                  ) : (
+                    "Подключить"
+                  )}
                 </button>
               )}
             </div>
