@@ -48,6 +48,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
   const VK_CLIENT_ID = "54069665";
   const VK_CLIENT_SECRET = "wD4EGCDwIg5lpTO1s8tj";
 
+
   // Загрузка Google API скрипта (убираем видимую кнопку)
   useEffect(() => {
     const loadGoogleScript = () => {
@@ -135,9 +136,11 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     const url = new URL(window.location.href);
     const state = url.searchParams.get("state");
     const code = url.searchParams.get("code");
+
     const deviceId = url.searchParams.get("device_id");
     const error = url.searchParams.get("error");
     const errorDescription = url.searchParams.get("error_description");
+
 
     if (state !== "vk") return;
 
@@ -148,6 +151,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
       setShowModal(true);
       url.searchParams.delete("error");
       url.searchParams.delete("error_description");
+
       url.searchParams.delete("state");
       window.history.replaceState(
         null,
@@ -160,6 +164,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
       );
       return;
     }
+
 
     if (code && deviceId && userId) {
       setVkLoading(true);
@@ -186,6 +191,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
                 code_verifier: codeVerifier,
               }),
             }
+
           );
 
           const tokenData = await tokenResponse.json();
@@ -248,6 +254,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             }
           }
 
+
           await fetch(
             "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
             {
@@ -257,7 +264,9 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
               },
               body: JSON.stringify({
                 userId,
+
                 newserviceid: String(vkUserId || ""),
+
                 newservicename: fullName,
                 newserviceimage: avatar,
                 service: "vk",
@@ -274,9 +283,11 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
           setShowModal(true);
         } finally {
           setVkLoading(false);
+
           sessionStorage.removeItem("vk_code_verifier");
           url.searchParams.delete("code");
           url.searchParams.delete("device_id");
+
           url.searchParams.delete("state");
           window.history.replaceState(
             null,
@@ -561,6 +572,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
       `https://id.vk.com/authorize?client_id=${VK_CLIENT_ID}&redirect_uri=${encodeURIComponent(
         redirectUri
       )}&response_type=code&state=vk&code_challenge=${codeChallenge}&code_challenge_method=s256`;
+
     setVkLoading(true);
     window.location.href = authUrl;
   };
