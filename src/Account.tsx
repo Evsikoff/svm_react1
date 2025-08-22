@@ -341,13 +341,31 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-8">
-      {/* Фрейм "Имя пользователя" */}
+      {/* Фрейм "Данные о пользователе" */}
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 shadow-lg">
         <h2 className="text-xl font-bold text-blue-800 mb-6 text-center">
-          Имя пользователя
+          Данные о пользователе
         </h2>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-center gap-6 mb-6">
+          {/* Фотография пользователя */}
+          <div className="flex-shrink-0">
+            <img
+              src={
+                userData?.userphotourl ||
+                "https://storage.yandexcloud.net/svm/img/nophoto.png"
+              }
+              alt="Фото пользователя"
+              className="w-24 h-24 rounded-full object-cover border-4 border-blue-300 shadow-md"
+              onError={(e) => {
+                console.warn("Ошибка загрузки фото пользователя");
+                e.currentTarget.src =
+                  "https://storage.yandexcloud.net/svm/img/nophoto.png";
+              }}
+            />
+          </div>
+
+          {/* Поле имени пользователя */}
           <div className="w-full sm:w-auto flex-grow">
             <input
               type="text"
@@ -357,6 +375,8 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
               placeholder="Введите имя пользователя"
             />
           </div>
+
+          {/* Кнопка сохранения */}
           <button
             onClick={handleSaveName}
             disabled={
