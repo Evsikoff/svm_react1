@@ -1,3 +1,4 @@
+// Account.tsx
 import React, { useState, useEffect } from "react";
 
 // Типы данных для ответа от сервера
@@ -38,23 +39,25 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   // Константы Google OAuth
-  const GOOGLE_CLIENT_ID = "125465866043-pe37ut04loiu1vg8rni1vf7tt7dv247i.apps.googleusercontent.com";
+  const GOOGLE_CLIENT_ID =
+    "125465866043-pe37ut04loiu1vg8rni1vf7tt7dv247i.apps.googleusercontent.com";
 
   // Загрузка Google API скрипта (убираем видимую кнопку)
   useEffect(() => {
     const loadGoogleScript = () => {
-      if (window.google || document.getElementById('google-signin-script')) {
+      if (window.google || document.getElementById("google-signin-script")) {
         return Promise.resolve();
       }
 
       return new Promise<void>((resolve, reject) => {
-        const script = document.createElement('script');
-        script.id = 'google-signin-script';
-        script.src = 'https://accounts.google.com/gsi/client';
+        const script = document.createElement("script");
+        script.id = "google-signin-script";
+        script.src = "https://accounts.google.com/gsi/client";
         script.async = true;
         script.defer = true;
         script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load Google script'));
+        script.onerror = () =>
+          reject(new Error("Failed to load Google script"));
         document.head.appendChild(script);
       });
     };
@@ -63,11 +66,15 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
 
     // Очистка при размонтировании компонента
     return () => {
-      if (window.google && window.google.accounts && window.google.accounts.id) {
+      if (
+        window.google &&
+        window.google.accounts &&
+        window.google.accounts.id
+      ) {
         try {
           window.google.accounts.id.disableAutoSelect();
         } catch (error) {
-          console.log('Google cleanup error:', error);
+          console.log("Google cleanup error:", error);
         }
       }
     };
@@ -117,25 +124,36 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     loadUserData();
   }, [userId]);
 
+  // Функция для декодирования base64url с поддержкой UTF-8
+  const base64UrlDecode = (str: string): string => {
+    str = str.replace(/-/g, "+").replace(/_/g, "/");
+    while (str.length % 4) str += "=";
+
+    const binary = atob(str);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    return new TextDecoder("utf-8").decode(bytes);
+  };
+
   // Функция обработки успешной авторизации Google
   const handleGoogleSuccess = async (credentialResponse: any) => {
     setGoogleLoading(true);
-    
+
     try {
-      // Декодируем JWT токен для получения информации о пользователе
+      // Декодируем JWT токен правильно с поддержкой UTF-8
       const credential = credentialResponse.credential;
-      const payload = JSON.parse(atob(credential.split('.')[1]));
-      
-      // Правильно кодируем имя пользователя в UTF-8
-      const userName = payload.name || "";
-      const encodedUserName = encodeURIComponent(userName);
-      
+      const payloadStr = base64UrlDecode(credential.split(".")[1]);
+      const payload = JSON.parse(payloadStr);
+
       const googleUserData = {
         userId: userId,
         newserviceid: payload.sub, // Google ID пользователя
-        newservicename: decodeURIComponent(encodedUserName), // Имя пользователя с правильной кодировкой
+        newservicename: payload.name || "", // Имя пользователя (уже в правильной кодировке)
         newserviceimage: payload.picture, // URL аватара
-        service: "google"
+        service: "google",
       };
 
       console.log("Отправляем данные в Yandex функцию:", googleUserData);
@@ -157,14 +175,13 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
       }
 
       const result = await response.json();
-      
+
       // Показываем ответ от функции
       setModalMessage(result.text || "Google аккаунт успешно подключен");
       setShowModal(true);
-      
+
       // Обновляем данные пользователя
       await loadUserData();
-      
     } catch (err: any) {
       console.error("Ошибка при подключении Google аккаунта:", err);
       setModalMessage("Ошибка при подключении Google аккаунта");
@@ -184,87 +201,68 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
 
   // Обработчик нажатия на кнопку "Подключить Google"
   const handleConnectGoogle = () => {
-    if (!window.google) {
-      setModalMessage("Google API не загружен. Попробуйте обновить страницу.");
+    if (!window.google || !window.google.accounts) {
+      console.error("Google SDK не загружен");
+      setModalMessage("Google SDK не загружен. Попробуйте обновить страницу.");
       setShowModal(true);
       return;
     }
 
-    setGoogleLoading(true);
-
     try {
-      // Инициализируем Google Sign-In для текущего пользователя
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.warn("Google prompt skipped or not displayed");
+        }
+      });
+
+      // Инициализируем One Tap с callback
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleSuccess,
+        callback: (response: any) => {
+          if (response.credential) {
+            handleGoogleSuccess(response);
+          } else {
+            handleGoogleError();
+          }
+        },
         auto_select: false,
         cancel_on_tap_outside: true,
-        // Очищаем кеш для избежания проблем с разными пользователями
-        use_fedcm_for_prompt: true,
-      });
-      
-      // Очищаем предыдущие сессии Google
-      window.google.accounts.id.disableAutoSelect();
-      
-      // Создаем временную кнопку для принудительного показа окна авторизации
-      const tempButton = document.createElement('div');
-      tempButton.id = 'temp-google-signin';
-      tempButton.style.position = 'absolute';
-      tempButton.style.top = '-1000px';
-      tempButton.style.left = '-1000px';
-      document.body.appendChild(tempButton);
-
-      // Рендерим кнопку Google и автоматически кликаем по ней
-      window.google.accounts.id.renderButton(tempButton, {
-        theme: 'outline',
-        size: 'large',
-        text: 'signin_with',
-        shape: 'rectangular',
-        width: 300
+        context: "use",
       });
 
-      // Небольшая задержка для рендеринга кнопки, затем кликаем по ней
-      setTimeout(() => {
-        const googleButton = tempButton.querySelector('div[role="button"]') as HTMLElement;
-        if (googleButton) {
-          googleButton.click();
-        } else {
-          // Если кнопка не найдена, пробуем показать через prompt
-          window.google.accounts.id.prompt((notification: any) => {
-            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-              setGoogleLoading(false);
-              setModalMessage("Не удалось показать окно авторизации Google. Проверьте настройки браузера.");
-              setShowModal(true);
-            }
-          });
-        }
-        
-        // Убираем временную кнопку через секунду
-        setTimeout(() => {
-          if (document.body.contains(tempButton)) {
-            document.body.removeChild(tempButton);
-          }
-        }, 1000);
-      }, 100);
-
-    } catch (err) {
-      console.error("Ошибка инициализации Google Sign-In:", err);
-      setGoogleLoading(false);
-      handleGoogleError();
+      // Показываем One Tap prompt
+      window.google.accounts.id.prompt();
+    } catch (error) {
+      console.error("Ошибка инициализации Google:", error);
+      setModalMessage("Ошибка при подключении Google");
+      setShowModal(true);
     }
   };
 
-  // Сохранение имени пользователя
-  const handleSaveName = async () => {
-    if (!userId || username.trim() === originalUsername.trim()) {
-      return;
+  // Общая функция для проверки подключения сервиса
+  const isServiceConnected = (service: "google" | "yandex" | "vk") => {
+    if (!userData) return false;
+    switch (service) {
+      case "google":
+        return !!userData.googleuserid;
+      case "yandex":
+        return !!userData.yandexuserid;
+      case "vk":
+        return !!userData.vkuserid;
+      default:
+        return false;
     }
+  };
+
+  // Обработчик сохранения имени
+  const handleSaveName = async () => {
+    if (!userId || !username.trim()) return;
 
     setSaveLoading(true);
 
     try {
       const response = await fetch(
-        "https://functions.yandexcloud.net/d4ep0ucg6i4e7s0p81ph",
+        "https://functions.yandexcloud.net/d4e0uavcq6k9i9b4c9rb",
         {
           method: "POST",
           headers: {
@@ -272,7 +270,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
           },
           body: JSON.stringify({
             userId,
-            newname: username.trim(),
+            newusername: username.trim(),
           }),
         }
       );
@@ -281,146 +279,112 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data: SaveNameResponse = await response.json();
-      setModalMessage(data.text || "Имя успешно сохранено");
+      const result: SaveNameResponse = await response.json();
+      setModalMessage(result.text || "Имя успешно сохранено");
       setShowModal(true);
       setOriginalUsername(username.trim());
-
-      // Обновляем данные пользователя
-      if (userData) {
-        setUserData({ ...userData, username: username.trim() });
-      }
+      await loadUserData(); // Обновляем данные
     } catch (err: any) {
       setModalMessage("Ошибка при сохранении имени");
       setShowModal(true);
-      console.error("Ошибка сохранения имени:", err);
     } finally {
       setSaveLoading(false);
     }
   };
 
-  // Проверка, изменилось ли имя пользователя
-  const isNameChanged =
-    username.trim() !== originalUsername.trim() && username.trim() !== "";
-
-  // Получение URL фотографии пользователя
-  const getUserPhotoUrl = (): string => {
-    if (userData?.userphotourl && userData.userphotourl.trim() !== "") {
-      return userData.userphotourl;
-    }
-    return "https://storage.yandexcloud.net/svm/img/nophoto.png";
-  };
-
-  // Проверка подключения сервиса
-  const isServiceConnected = (service: "google" | "yandex" | "vk"): boolean => {
-    if (!userData) return false;
-
+  // Функция обработки нажатия кнопки "Подключить" для сервисов
+  const handleConnect = (service: "google" | "yandex" | "vk") => {
     switch (service) {
       case "google":
-        return !!(userData.googleuserid && userData.googleuserid.trim() !== "");
+        handleConnectGoogle();
+        break;
       case "yandex":
-        return !!(userData.yandexuserid && userData.yandexuserid.trim() !== "");
+        setModalMessage("Подключение Yandex в разработке");
+        setShowModal(true);
+        break;
       case "vk":
-        return !!(userData.vkuserid && userData.vkuserid.trim() !== "");
-      default:
-        return false;
+        setModalMessage("Подключение VK в разработке");
+        setShowModal(true);
+        break;
     }
   };
 
-  // Обработчик нажатия на кнопку "Подключить"
-  const handleConnect = (service: string) => {
-    console.log(`Попытка подключения к сервису: ${service}`);
-    
-    if (service === "google") {
-      handleConnectGoogle();
-    } else {
-      // TODO: Реализовать логику подключения для других сервисов
-      setModalMessage(`Подключение к ${service} пока не реализовано`);
-      setShowModal(true);
-    }
-  };
-
-  // Обработчик нажатия на иконку авторизации (пока ничего не делает)
-  const handleAuthClick = (service: string) => {
-    console.log(`Попытка авторизации через: ${service}`);
-    // TODO: Реализовать логику авторизации
+  // Функция обработки нажатия кнопки авторизации
+  const handleAuthClick = (service: "google" | "yandex" | "vk") => {
+    setModalMessage(
+      `Авторизация через ${
+        service.charAt(0).toUpperCase() + service.slice(1)
+      } в разработке`
+    );
+    setShowModal(true);
   };
 
   if (loading) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <div className="w-full flex items-center justify-center py-16">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <div className="bg-red-100 text-red-700 border border-red-300 px-4 py-3 rounded-lg">
-          {error}
-        </div>
+      <div className="bg-red-100 text-red-700 p-4 rounded-lg border border-red-300">
+        {error}
       </div>
     );
   }
 
+  if (!userData) {
+    return null;
+  }
+
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-6 max-w-4xl mx-auto space-y-8">
       {/* Фрейм "Данные о пользователе" */}
-      <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-2xl p-6 shadow-lg">
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 shadow-lg">
         <h2 className="text-xl font-bold text-blue-800 mb-6 text-center">
           Данные о пользователе
         </h2>
 
-        <div className="flex flex-col items-center space-y-4">
-          {/* Фотография пользователя */}
-          <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-300 shadow-md">
-            <img
-              src={getUserPhotoUrl()}
-              alt="Фото пользователя"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.src =
-                  "https://storage.yandexcloud.net/svm/img/nophoto.png";
-              }}
-            />
-          </div>
+        {/* Аватар пользователя */}
+        <div className="flex justify-center mb-6">
+          <img
+            src={
+              userData.userphotourl ||
+              "https://storage.yandexcloud.net/svm/img/default-avatar.png"
+            }
+            alt="Аватар пользователя"
+            className="w-32 h-32 rounded-full object-cover border-4 border-blue-300 shadow-md"
+            onError={(e) => {
+              e.currentTarget.src =
+                "https://storage.yandexcloud.net/svm/img/default-avatar.png";
+            }}
+          />
+        </div>
 
-          {/* Поле для редактирования имени */}
-          <div className="w-full max-w-sm">
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium text-blue-800 mb-2"
-            >
-              Имя пользователя
-            </label>
+        {/* Имя пользователя */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
+          <div className="w-full sm:w-auto flex-grow">
             <input
-              id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Введите ваше имя"
+              className="w-full px-4 py-3 rounded-xl border border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200 text-lg"
+              placeholder="Введите имя пользователя"
             />
           </div>
-
-          {/* Кнопка "Сохранить" */}
           <button
             onClick={handleSaveName}
-            disabled={!isNameChanged || saveLoading}
-            className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
-              isNameChanged && !saveLoading
-                ? "bg-blue-500 text-white hover:bg-blue-600 active:scale-95"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
+            disabled={
+              saveLoading ||
+              !username.trim() ||
+              username.trim() === originalUsername
+            }
+            className="w-full sm:w-auto px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex items-center justify-center"
           >
             {saveLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Сохранение...
-              </div>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               "Сохранить"
             )}
@@ -429,14 +393,14 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
       </div>
 
       {/* Фрейм "Подключенные аккаунты" */}
-      <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-2xl p-6 shadow-lg">
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6 shadow-lg">
         <h2 className="text-xl font-bold text-green-800 mb-6 text-center">
           Подключенные аккаунты
         </h2>
 
         <div className="space-y-4">
           {/* Google */}
-          <div className="flex items-center justify-between bg-white rounded-xl p-4 border border-green-200">
+          <div className="flex items-center justify-between bg-white rounded-xl p-4 border border-red-200">
             <div className="flex items-center gap-3">
               <img
                 src="https://storage.yandexcloud.net/svm/img/service_icons/google.png"
@@ -464,13 +428,13 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
                 <button
                   onClick={() => handleConnect("google")}
                   disabled={googleLoading}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm flex items-center gap-2"
                 >
                   {googleLoading ? (
-                    <div className="flex items-center gap-2">
+                    <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Подключение...
-                    </div>
+                      Подключаем...
+                    </>
                   ) : (
                     "Подключить"
                   )}
@@ -480,7 +444,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
           </div>
 
           {/* Yandex */}
-          <div className="flex items-center justify-between bg-white rounded-xl p-4 border border-green-200">
+          <div className="flex items-center justify-between bg-white rounded-xl p-4 border border-yellow-200">
             <div className="flex items-center gap-3">
               <img
                 src="https://storage.yandexcloud.net/svm/img/service_icons/yandex.png"
