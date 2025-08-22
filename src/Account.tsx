@@ -45,8 +45,9 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     "125465866043-pe37ut04loiu1vg8rni1vf7tt7dv247i.apps.googleusercontent.com";
   const YANDEX_CLIENT_ID = "3d7ec2c7ceb34ed59b445d7fb152ac9f";
   const YANDEX_CLIENT_SECRET = "1d85ca9e132b4e419c960c38832f8d71";
-  const VK_CLIENT_ID = "54069662";
-  const VK_CLIENT_SECRET = "sI64QRX6nXZOuTEPDn4o";
+  const VK_CLIENT_ID = "54069665";
+  const VK_CLIENT_SECRET = "wD4EGCDwIg5lpTO1s8tj";
+
 
   // Загрузка Google API скрипта (убираем видимую кнопку)
   useEffect(() => {
@@ -135,14 +136,22 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     const url = new URL(window.location.href);
     const state = url.searchParams.get("state");
     const code = url.searchParams.get("code");
+
+    const deviceId = url.searchParams.get("device_id");
     const error = url.searchParams.get("error");
+    const errorDescription = url.searchParams.get("error_description");
+
 
     if (state !== "vk") return;
 
     if (error) {
-      setModalMessage("Авторизация VK не удалась");
+      setModalMessage(
+        errorDescription || "Авторизация VK не удалась"
+      );
       setShowModal(true);
       url.searchParams.delete("error");
+      url.searchParams.delete("error_description");
+
       url.searchParams.delete("state");
       window.history.replaceState(
         null,
@@ -156,16 +165,33 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
       return;
     }
 
-    if (code && userId) {
+
+    if (code && deviceId && userId) {
       setVkLoading(true);
       const redirectUri = window.location.origin + window.location.pathname;
+      const codeVerifier =
+        sessionStorage.getItem("vk_code_verifier") || "";
 
       const fetchVkData = async () => {
         try {
           const tokenResponse = await fetch(
-            `https://oauth.vk.com/access_token?client_id=${VK_CLIENT_ID}&client_secret=${VK_CLIENT_SECRET}&redirect_uri=${encodeURIComponent(
-              redirectUri
-            )}&code=${code}`
+            "https://id.vk.com/oauth2/auth",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: new URLSearchParams({
+                grant_type: "authorization_code",
+                client_id: VK_CLIENT_ID,
+                client_secret: VK_CLIENT_SECRET,
+                code,
+                device_id: deviceId,
+                redirect_uri: redirectUri,
+                code_verifier: codeVerifier,
+              }),
+            }
+
           );
 
           const tokenData = await tokenResponse.json();
@@ -173,21 +199,61 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             throw new Error(tokenData.error_description || "Token error");
           }
 
-          const accessToken = tokenData.access_token;
-          const vkUserId = tokenData.user_id;
+          let vkUserId = tokenData.user_id || tokenData.user?.id;
+          let fullName = "";
+          let avatar = "";
 
-          const userResponse = await fetch(
-            `https://api.vk.com/method/users.get?user_ids=${vkUserId}&fields=photo_100&access_token=${accessToken}&v=5.131`
-          );
-          const userJson = await userResponse.json();
-          const userInfo =
-            userJson.response && userJson.response.length > 0
-              ? userJson.response[0]
-              : null;
+          if (tokenData.user) {
+            fullName = `${tokenData.user.first_name || ""} ${
+              tokenData.user.last_name || ""
+            }`.trim();
+            avatar =
+              tokenData.user.avatar ||
+              tokenData.user.avatar_100 ||
+              tokenData.user.photo_100 ||
+              tokenData.user.picture ||
+              "";
+          }
 
-          const avatar = userInfo?.photo_100 || "";
-          const fullName =
-            `${userInfo?.first_name || ""} ${userInfo?.last_name || ""}`.trim();
+          if (tokenData.id_token) {
+            try {
+              const payload = JSON.parse(
+                base64UrlDecode(tokenData.id_token.split(".")[1])
+              );
+              vkUserId = vkUserId || payload.sub;
+              fullName =
+                fullName ||
+                payload.name ||
+                `${payload.first_name || ""} ${
+                  payload.last_name || ""
+                }`.trim();
+              avatar = avatar || payload.picture || "";
+            } catch (e) {
+              console.error("VK id_token parse error:", e);
+            }
+          }
+
+          if ((!fullName || !avatar) && vkUserId && tokenData.access_token) {
+            try {
+              const userResponse = await fetch(
+                `https://api.vk.com/method/users.get?user_ids=${vkUserId}&fields=photo_100&access_token=${tokenData.access_token}&v=5.131`
+              );
+              const userJson = await userResponse.json();
+              const info =
+                userJson.response && userJson.response.length > 0
+                  ? userJson.response[0]
+                  : null;
+              if (info) {
+                fullName =
+                  fullName ||
+                  `${info.first_name || ""} ${info.last_name || ""}`.trim();
+                avatar = avatar || info.photo_100 || "";
+              }
+            } catch (e) {
+              console.error("VK user info fetch error:", e);
+            }
+          }
+
 
           await fetch(
             "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
@@ -198,7 +264,9 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
               },
               body: JSON.stringify({
                 userId,
-                newserviceid: String(vkUserId),
+
+                newserviceid: String(vkUserId || ""),
+
                 newservicename: fullName,
                 newserviceimage: avatar,
                 service: "vk",
@@ -215,7 +283,11 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
           setShowModal(true);
         } finally {
           setVkLoading(false);
+
+          sessionStorage.removeItem("vk_code_verifier");
           url.searchParams.delete("code");
+          url.searchParams.delete("device_id");
+
           url.searchParams.delete("state");
           window.history.replaceState(
             null,
@@ -468,13 +540,39 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     window.location.href = authUrl;
   };
 
+  // Генерация случайной строки для PKCE
+  const generateRandomString = (length: number): string => {
+    const array = new Uint8Array(length);
+    window.crypto.getRandomValues(array);
+    return Array.from(array, (dec) =>
+      dec.toString(16).padStart(2, "0")
+    )
+      .join("")
+      .slice(0, length);
+  };
+
+  const generateCodeChallenge = async (
+    verifier: string
+  ): Promise<string> => {
+    const data = new TextEncoder().encode(verifier);
+    const digest = await window.crypto.subtle.digest("SHA-256", data);
+    return btoa(String.fromCharCode(...Array.from(new Uint8Array(digest))))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  };
+
   // Обработчик нажатия на кнопку "Подключить VK"
-  const handleConnectVK = () => {
+  const handleConnectVK = async () => {
     const redirectUri = window.location.origin + window.location.pathname;
+    const codeVerifier = generateRandomString(64);
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    sessionStorage.setItem("vk_code_verifier", codeVerifier);
     const authUrl =
-      `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(
+      `https://id.vk.com/authorize?client_id=${VK_CLIENT_ID}&redirect_uri=${encodeURIComponent(
         redirectUri
-      )}&scope=&response_type=code&v=5.131&state=vk`;
+      )}&response_type=code&state=vk&code_challenge=${codeChallenge}&code_challenge_method=s256`;
+
     setVkLoading(true);
     window.location.href = authUrl;
   };
