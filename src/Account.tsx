@@ -14,10 +14,18 @@ interface SaveNameResponse {
 }
 
 interface AccountProps {
-  userId?: number | null;
+  userId: number | null;
 }
 
-const Account: React.FC<AccountProps> = ({ userId = 11131 }) => {
+// Глобальные переменные для Google OAuth
+declare global {
+  interface Window {
+    google: any;
+    gapi: any;
+  }
+}
+
+const Account: React.FC<AccountProps> = ({ userId }) => {
   // Состояния компонента
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -27,6 +35,43 @@ const Account: React.FC<AccountProps> = ({ userId = 11131 }) => {
   const [saveLoading, setSaveLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState<string>("");
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Константы Google OAuth
+  const GOOGLE_CLIENT_ID = "125465866043-pe37ut04loiu1vg8rni1vf7tt7dv247i.apps.googleusercontent.com";
+
+  // Загрузка Google API скрипта (убираем видимую кнопку)
+  useEffect(() => {
+    const loadGoogleScript = () => {
+      if (window.google || document.getElementById('google-signin-script')) {
+        return Promise.resolve();
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const script = document.createElement('script');
+        script.id = 'google-signin-script';
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load Google script'));
+        document.head.appendChild(script);
+      });
+    };
+
+    loadGoogleScript().catch(console.error);
+
+    // Очистка при размонтировании компонента
+    return () => {
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        try {
+          window.google.accounts.id.disableAutoSelect();
+        } catch (error) {
+          console.log('Google cleanup error:', error);
+        }
+      }
+    };
+  }, []);
 
   // Загрузка данных пользователя
   const loadUserData = async () => {
@@ -71,6 +116,143 @@ const Account: React.FC<AccountProps> = ({ userId = 11131 }) => {
   useEffect(() => {
     loadUserData();
   }, [userId]);
+
+  // Функция обработки успешной авторизации Google
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setGoogleLoading(true);
+    
+    try {
+      // Декодируем JWT токен для получения информации о пользователе
+      const credential = credentialResponse.credential;
+      const payload = JSON.parse(atob(credential.split('.')[1]));
+      
+      // Правильно кодируем имя пользователя в UTF-8
+      const userName = payload.name || "";
+      const encodedUserName = encodeURIComponent(userName);
+      
+      const googleUserData = {
+        userId: userId,
+        newserviceid: payload.sub, // Google ID пользователя
+        newservicename: decodeURIComponent(encodedUserName), // Имя пользователя с правильной кодировкой
+        newserviceimage: payload.picture, // URL аватара
+        service: "google"
+      };
+
+      console.log("Отправляем данные в Yandex функцию:", googleUserData);
+
+      // Отправляем данные в Yandex функцию
+      const response = await fetch(
+        "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+          },
+          body: JSON.stringify(googleUserData),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // Показываем ответ от функции
+      setModalMessage(result.text || "Google аккаунт успешно подключен");
+      setShowModal(true);
+      
+      // Обновляем данные пользователя
+      await loadUserData();
+      
+    } catch (err: any) {
+      console.error("Ошибка при подключении Google аккаунта:", err);
+      setModalMessage("Ошибка при подключении Google аккаунта");
+      setShowModal(true);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // Функция обработки ошибки авторизации Google
+  const handleGoogleError = () => {
+    console.error("Google авторизация не удалась");
+    setGoogleLoading(false);
+    setModalMessage("Авторизация Google не удалась. Попробуйте еще раз.");
+    setShowModal(true);
+  };
+
+  // Обработчик нажатия на кнопку "Подключить Google"
+  const handleConnectGoogle = () => {
+    if (!window.google) {
+      setModalMessage("Google API не загружен. Попробуйте обновить страницу.");
+      setShowModal(true);
+      return;
+    }
+
+    setGoogleLoading(true);
+
+    try {
+      // Инициализируем Google Sign-In для текущего пользователя
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleSuccess,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        // Очищаем кеш для избежания проблем с разными пользователями
+        use_fedcm_for_prompt: true,
+      });
+      
+      // Очищаем предыдущие сессии Google
+      window.google.accounts.id.disableAutoSelect();
+      
+      // Создаем временную кнопку для принудительного показа окна авторизации
+      const tempButton = document.createElement('div');
+      tempButton.id = 'temp-google-signin';
+      tempButton.style.position = 'absolute';
+      tempButton.style.top = '-1000px';
+      tempButton.style.left = '-1000px';
+      document.body.appendChild(tempButton);
+
+      // Рендерим кнопку Google и автоматически кликаем по ней
+      window.google.accounts.id.renderButton(tempButton, {
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'rectangular',
+        width: 300
+      });
+
+      // Небольшая задержка для рендеринга кнопки, затем кликаем по ней
+      setTimeout(() => {
+        const googleButton = tempButton.querySelector('div[role="button"]') as HTMLElement;
+        if (googleButton) {
+          googleButton.click();
+        } else {
+          // Если кнопка не найдена, пробуем показать через prompt
+          window.google.accounts.id.prompt((notification: any) => {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+              setGoogleLoading(false);
+              setModalMessage("Не удалось показать окно авторизации Google. Проверьте настройки браузера.");
+              setShowModal(true);
+            }
+          });
+        }
+        
+        // Убираем временную кнопку через секунду
+        setTimeout(() => {
+          if (document.body.contains(tempButton)) {
+            document.body.removeChild(tempButton);
+          }
+        }, 1000);
+      }, 100);
+
+    } catch (err) {
+      console.error("Ошибка инициализации Google Sign-In:", err);
+      setGoogleLoading(false);
+      handleGoogleError();
+    }
+  };
 
   // Сохранение имени пользователя
   const handleSaveName = async () => {
@@ -145,10 +327,17 @@ const Account: React.FC<AccountProps> = ({ userId = 11131 }) => {
     }
   };
 
-  // Обработчик нажатия на кнопку "Подключить" (пока ничего не делает)
+  // Обработчик нажатия на кнопку "Подключить"
   const handleConnect = (service: string) => {
     console.log(`Попытка подключения к сервису: ${service}`);
-    // TODO: Реализовать логику подключения
+    
+    if (service === "google") {
+      handleConnectGoogle();
+    } else {
+      // TODO: Реализовать логику подключения для других сервисов
+      setModalMessage(`Подключение к ${service} пока не реализовано`);
+      setShowModal(true);
+    }
   };
 
   // Обработчик нажатия на иконку авторизации (пока ничего не делает)
@@ -274,9 +463,17 @@ const Account: React.FC<AccountProps> = ({ userId = 11131 }) => {
               ) : (
                 <button
                   onClick={() => handleConnect("google")}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 text-sm"
+                  disabled={googleLoading}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Подключить
+                  {googleLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Подключение...
+                    </div>
+                  ) : (
+                    "Подключить"
+                  )}
                 </button>
               )}
             </div>

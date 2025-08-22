@@ -639,7 +639,7 @@ const App: React.FC = () => {
           <Inventory userId={userId} />
         )}
       {!showRaisingInteraction &&
-        selectedMenuSequence === MENU_SEQUENCES.ACCOUNT && <Account />}
+        selectedMenuSequence === MENU_SEQUENCES.ACCOUNT && <Account userId={userId} />}
       <SpeedInsights />
     </div>
   );
