@@ -45,8 +45,8 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     "125465866043-pe37ut04loiu1vg8rni1vf7tt7dv247i.apps.googleusercontent.com";
   const YANDEX_CLIENT_ID = "3d7ec2c7ceb34ed59b445d7fb152ac9f";
   const YANDEX_CLIENT_SECRET = "1d85ca9e132b4e419c960c38832f8d71";
-  const VK_CLIENT_ID = "54069665";
-  const VK_CLIENT_SECRET = "wD4EGCDwIg5lpTO1s8tj";
+  const VK_CLIENT_ID = "54069662";
+  const VK_CLIENT_SECRET = "sI64QRX6nXZOuTEPDn4o";
 
   // Загрузка Google API скрипта (убираем видимую кнопку)
   useEffect(() => {
