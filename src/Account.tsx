@@ -313,10 +313,10 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     const code = url.searchParams.get("code");
     const error = url.searchParams.get("error");
 
-    if (error) {
-      setModalMessage("Авторизация Yandex не удалась");
-      setShowModal(true);
+    const clearParams = () => {
+      url.searchParams.delete("code");
       url.searchParams.delete("error");
+      url.searchParams.delete("state");
       window.history.replaceState(
         null,
         "",
@@ -326,6 +326,110 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             : "") +
           url.hash
       );
+    };
+
+    // Авторизация во фрейме "Авторизация"
+    if (state === "yandex_auth") {
+      if (error) {
+        setModalMessage("Авторизация Yandex не удалась");
+        setShowModal(true);
+        clearParams();
+        return;
+      }
+
+      if (code && userId) {
+        setYandexLoading(true);
+
+        const fetchYandexAuth = async () => {
+          try {
+            const tokenResponse = await fetch("https://oauth.yandex.ru/token", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: new URLSearchParams({
+                grant_type: "authorization_code",
+                code,
+                client_id: YANDEX_CLIENT_ID,
+                client_secret: YANDEX_CLIENT_SECRET,
+              }),
+            });
+
+            if (!tokenResponse.ok) {
+              throw new Error(`HTTP error! status: ${tokenResponse.status}`);
+            }
+
+            const tokenData = await tokenResponse.json();
+            const accessToken = tokenData.access_token;
+
+            const infoResponse = await fetch(
+              "https://login.yandex.ru/info?format=json",
+              {
+                headers: {
+                  Authorization: `OAuth ${accessToken}`,
+                },
+              }
+            );
+
+            if (!infoResponse.ok) {
+              throw new Error(`HTTP error! status: ${infoResponse.status}`);
+            }
+
+            const info = await infoResponse.json();
+            const avatarUrl = info.is_avatar_empty
+              ? ""
+              : `https://avatars.yandex.net/get-yapic/${info.default_avatar_id}/islands-200`;
+
+            const response = await fetch(
+              "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  userId,
+                  newserviceid: info.id,
+                  newservicename: info.display_name || info.login,
+                  newserviceimage: avatarUrl,
+                  service: "yandex",
+                }),
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.userId) {
+              window.location.reload();
+              return;
+            }
+
+            setModalMessage(result.text || "Авторизация Yandex не удалась");
+            setShowModal(true);
+          } catch (err) {
+            console.error("Ошибка при авторизации через Yandex:", err);
+            setModalMessage("Ошибка при авторизации Yandex");
+            setShowModal(true);
+          } finally {
+            setYandexLoading(false);
+            clearParams();
+          }
+        };
+
+        fetchYandexAuth();
+      }
+      return;
+    }
+
+    // Подключение аккаунта Yandex
+    if (error) {
+      setModalMessage("Авторизация Yandex не удалась");
+      setShowModal(true);
+      clearParams();
       return;
     }
 
@@ -398,17 +502,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
           setShowModal(true);
         } finally {
           setYandexLoading(false);
-          url.searchParams.delete("code");
-          url.searchParams.delete("state");
-          window.history.replaceState(
-            null,
-            "",
-            url.pathname +
-              (url.searchParams.toString()
-                ? `?${url.searchParams.toString()}`
-                : "") +
-              url.hash
-          );
+          clearParams();
         }
       };
 
@@ -741,11 +835,23 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     }
   };
 
+  // Обработчик нажатия на кнопку авторизации Yandex
+  const handleAuthYandex = () => {
+    const redirectUri = window.location.origin + window.location.pathname;
+    const authUrl =
+      `https://oauth.yandex.ru/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=yandex_auth`;
+    setYandexLoading(true);
+    window.location.href = authUrl;
+  };
+
   // Функция обработки нажатия кнопки авторизации
   const handleAuthClick = (service: "google" | "yandex" | "vk") => {
     switch (service) {
       case "google":
         handleAuthGoogle();
+        break;
+      case "yandex":
+        handleAuthYandex();
         break;
       default:
         setModalMessage(
