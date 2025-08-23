@@ -1036,49 +1036,6 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             </div>
           </div>
 
-          {/* VK */}
-          <div className="flex items-center justify-between bg-white rounded-xl p-4 border border-green-200">
-            <div className="flex items-center gap-3">
-              <img
-                src="https://storage.yandexcloud.net/svm/img/service_icons/vk.png"
-                alt="VK"
-                className="w-8 h-8"
-              />
-              <span className="font-medium text-gray-800">VK</span>
-            </div>
-            <div>
-              {isServiceConnected("vk") ? (
-                <div className="flex items-center text-green-600">
-                  <svg
-                    className="w-6 h-6"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleConnect("vk")}
-                  disabled={vkLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm flex items-center gap-2"
-                >
-                  {vkLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Подключаем...
-                    </>
-                  ) : (
-                    "Подключить"
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -1115,18 +1072,6 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             <span className="text-sm font-medium text-gray-800">Yandex</span>
           </button>
 
-          {/* VK */}
-          <button
-            onClick={() => handleAuthClick("vk")}
-            className="flex flex-col items-center p-4 bg-white rounded-xl border border-purple-200 hover:border-purple-300 hover:shadow-md transition-all duration-200 active:scale-95"
-          >
-            <img
-              src="https://storage.yandexcloud.net/svm/img/service_icons/vk.png"
-              alt="VK"
-              className="w-12 h-12 mb-2"
-            />
-            <span className="text-sm font-medium text-gray-800">VK</span>
-          </button>
         </div>
       </div>
 
