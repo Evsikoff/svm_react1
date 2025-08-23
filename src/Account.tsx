@@ -645,14 +645,116 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     }
   };
 
+  // Функция обработки успешной авторизации Google во фрейме "Авторизация"
+  const handleGoogleAuthSuccess = async (credentialResponse: any) => {
+    setGoogleLoading(true);
+
+    try {
+      const credential = credentialResponse.credential;
+      const payloadStr = base64UrlDecode(credential.split(".")[1]);
+      const payload = JSON.parse(payloadStr);
+
+      const googleAuthData = {
+        userId: userId,
+        newserviceid: payload.sub,
+        newservicename: payload.name || "",
+        newserviceimage: payload.picture,
+        service: "google",
+      };
+
+      const response = await fetch(
+        "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+          },
+          body: JSON.stringify(googleAuthData),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.userId) {
+        window.location.reload();
+        return;
+      }
+
+      setModalMessage(result.text || "Авторизация Google не удалась");
+      setShowModal(true);
+    } catch (err: any) {
+      console.error("Ошибка при авторизации через Google:", err);
+      setModalMessage("Ошибка при авторизации Google");
+      setShowModal(true);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // Обработчик ошибки авторизации Google
+  const handleGoogleAuthError = () => {
+    console.error("Google авторизация не удалась");
+    setGoogleLoading(false);
+    setModalMessage("Авторизация Google не удалась. Попробуйте еще раз.");
+    setShowModal(true);
+  };
+
+  // Обработчик нажатия на кнопку авторизации Google
+  const handleAuthGoogle = () => {
+    if (!window.google || !window.google.accounts) {
+      console.error("Google SDK не загружен");
+      setModalMessage("Google SDK не загружен. Попробуйте обновить страницу.");
+      setShowModal(true);
+      return;
+    }
+
+    try {
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.warn("Google prompt skipped or not displayed");
+        }
+      });
+
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (response: any) => {
+          if (response.credential) {
+            handleGoogleAuthSuccess(response);
+          } else {
+            handleGoogleAuthError();
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        context: "use",
+      });
+
+      window.google.accounts.id.prompt();
+    } catch (error) {
+      console.error("Ошибка инициализации Google:", error);
+      setModalMessage("Ошибка авторизации Google");
+      setShowModal(true);
+    }
+  };
+
   // Функция обработки нажатия кнопки авторизации
   const handleAuthClick = (service: "google" | "yandex" | "vk") => {
-    setModalMessage(
-      `Авторизация через ${
-        service.charAt(0).toUpperCase() + service.slice(1)
-      } в разработке`
-    );
-    setShowModal(true);
+    switch (service) {
+      case "google":
+        handleAuthGoogle();
+        break;
+      default:
+        setModalMessage(
+          `Авторизация через ${
+            service.charAt(0).toUpperCase() + service.slice(1)
+          } в разработке`
+        );
+        setShowModal(true);
+    }
   };
 
   if (loading) {
