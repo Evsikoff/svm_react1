@@ -405,6 +405,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
 
             if (result.userId) {
               clearParams();
+
               window.location.reload();
               return;
             }
