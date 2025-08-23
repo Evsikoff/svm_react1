@@ -407,6 +407,20 @@ const App: React.FC = () => {
     }
   };
 
+  // Загрузка списка монстров для переключателя
+  const loadMonsters = async () => {
+    if (monstersId.length === 0) return;
+    try {
+      const monstersRes = await apiService.getMonsters(monstersId);
+      const sorted = (monstersRes.monsters || []).sort(
+        (a, b) => a.sequence - b.sequence
+      );
+      setMonsters(sorted);
+    } catch {
+      // ошибка уже показана
+    }
+  };
+
   // Загрузка данных монстра при смене selectedMonsterId
   useEffect(() => {
     if (booting || !selectedMonsterId) return;
@@ -532,6 +546,7 @@ const App: React.FC = () => {
           loadCharacteristics(),
           loadMonsterRoom(),
           loadImpacts(),
+          loadMonsters(),
         ]);
       } finally {
         setIsLoading(false);
