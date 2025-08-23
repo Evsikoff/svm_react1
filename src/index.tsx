@@ -83,6 +83,10 @@ const App: React.FC = () => {
   // Создаем экземпляр API сервиса
   const apiService = new ApiService((error) => setError(error));
 
+  // Константы OAuth Yandex
+  const YANDEX_CLIENT_ID = "3d7ec2c7ceb34ed59b445d7fb152ac9f";
+  const YANDEX_CLIENT_SECRET = "1d85ca9e132b4e419c960c38832f8d71";
+
   // --- отметка выполненной задачи на прогресс-баре ---
   const markTaskDone = (key: BootTaskKey) => {
     setBootTasks((prev) =>
@@ -188,6 +192,120 @@ const App: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  // Обработка возврата с авторизации Yandex на главном экране
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const state = url.searchParams.get("state");
+    const code = url.searchParams.get("code");
+    const errorParam = url.searchParams.get("error");
+
+    const clearParams = () => {
+      url.searchParams.delete("code");
+      url.searchParams.delete("error");
+      url.searchParams.delete("state");
+      window.history.replaceState(
+        null,
+        "",
+        url.pathname +
+          (url.searchParams.toString()
+            ? `?${url.searchParams.toString()}`
+            : "") +
+          url.hash
+      );
+    };
+
+    if (state !== "yandex_auth") return;
+
+    if (errorParam) {
+      setError("Авторизация Yandex не удалась");
+      clearParams();
+      return;
+    }
+
+    if (code && userId) {
+      const fetchYandexAuth = async () => {
+        try {
+          const tokenResponse = await fetch("https://oauth.yandex.ru/token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              grant_type: "authorization_code",
+              code,
+              client_id: YANDEX_CLIENT_ID,
+              client_secret: YANDEX_CLIENT_SECRET,
+            }),
+          });
+
+          if (!tokenResponse.ok) {
+            throw new Error(`HTTP error! status: ${tokenResponse.status}`);
+          }
+
+          const tokenData = await tokenResponse.json();
+          const accessToken = tokenData.access_token;
+
+          const infoResponse = await fetch(
+            "https://login.yandex.ru/info?format=json",
+            {
+              headers: {
+                Authorization: `OAuth ${accessToken}`,
+              },
+            }
+          );
+
+          if (!infoResponse.ok) {
+            throw new Error(`HTTP error! status: ${infoResponse.status}`);
+          }
+
+          const info = await infoResponse.json();
+          const avatarUrl = info.is_avatar_empty
+            ? ""
+            : `https://avatars.yandex.net/get-yapic/${info.default_avatar_id}/islands-200`;
+
+          const response = await fetch(
+            "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                userId,
+                newserviceid: info.id,
+                newservicename: info.display_name || info.login,
+                newserviceimage: avatarUrl,
+                service: "yandex",
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+
+          if (result.userId) {
+            clearParams();
+            window.location.reload();
+            return;
+          }
+
+          setError(result.text || "Авторизация Yandex не удалась");
+        } catch (err) {
+          console.error("Ошибка при авторизации через Yandex:", err);
+          setError("Ошибка при авторизации Yandex");
+        } finally {
+          clearParams();
+        }
+      };
+
+      fetchYandexAuth();
+    }
+  }, [userId]);
+
   //Эффект для предметов в комнате монстра
   useEffect(() => {
     if (roomItems.length === 0) {
