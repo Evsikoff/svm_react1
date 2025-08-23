@@ -38,6 +38,11 @@ export interface TeachEnergyResponse {
   nextfreereplenishment: string;
 }
 
+export interface CompetitionEnergyResponse {
+  competitionenergy: number;
+  nextfreereplenishment: string;
+}
+
 export interface MonsterCharacteristic {
   id: number;
   value: number;

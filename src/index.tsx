@@ -773,7 +773,9 @@ const App: React.FC = () => {
         )}
       {/* Остальные разделы */}
       {!showRaisingInteraction &&
-        selectedMenuSequence === MENU_SEQUENCES.ARENA && <Arena />}
+        selectedMenuSequence === MENU_SEQUENCES.ARENA && (
+          <Arena userId={userId} />
+        )}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.SHOP && (
           <Shop userId={userId} />
