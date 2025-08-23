@@ -22,6 +22,7 @@ export const API_URLS = {
   monsters:
     "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/monsters",
   teachenergy: "https://functions.yandexcloud.net/d4ek0gg34e57hosr45u8",
+  competitionenergy: "https://functions.yandexcloud.net/d4e83k58k32gf9ibt1jt",
   characteristics: "https://functions.yandexcloud.net/d4eja3aglipp5f8hfb73",
   monsterroom: "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
   impacts: "https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj",
@@ -33,6 +34,8 @@ export const IMAGES = {
   loading: "https://storage.yandexcloud.net/svm/loading.gif",
   bell: "https://storage.yandexcloud.net/svm/img/bell.png",
   energy: "https://storage.yandexcloud.net/svm/img/userteachenergy.png",
+  competitionEnergy:
+    "https://storage.yandexcloud.net/svm/img/usercompetitionenergy.png",
 };
 
 // Последовательности меню
