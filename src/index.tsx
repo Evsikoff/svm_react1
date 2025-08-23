@@ -138,13 +138,16 @@ const App: React.FC = () => {
           (a, b) => a.sequence - b.sequence
         );
         setMonsters(sorted);
-        const def2 = sorted.findIndex((m) => m.index);
+        
+        // ИСПРАВЛЕНИЕ: ищем монстра с index: true и используем его monsterId
+        const defaultMonster = sorted.find((m) => m.index);
         let selectedMonsterLocal: number | null = null;
-        if (def2 >= 0) {
-          selectedMonsterLocal = initRes.monstersId[def2];
-        } else {
-          selectedMonsterLocal = initRes.monstersId[0];
+        if (defaultMonster) {
+          selectedMonsterLocal = (defaultMonster as any).monsterId;
+        } else if (sorted.length > 0) {
+          selectedMonsterLocal = (sorted[0] as any).monsterId;
         }
+        
         setSelectedMonsterId(selectedMonsterLocal);
         markTaskDone("monsters");
 
@@ -609,7 +612,6 @@ const App: React.FC = () => {
           onClose={closeRaisingInteraction}
         />
       )}
-      {/* Раздел "Воспитание" - упрощённая версия без отдельного компонента */}
 
       {/* Раздел "Воспитание" - полная версия с компонентами */}
       {!showRaisingInteraction &&
@@ -617,28 +619,37 @@ const App: React.FC = () => {
           <div className="p-4">
             {/* БЛОК С ПЕРЕКЛЮЧАТЕЛЕМ МОНСТРОВ И ЭНЕРГИЕЙ */}
             <div className="flex flex-col gap-4 md:flex-row md:justify-between">
-              {/* Переключатель монстров */}
+              {/* ИСПРАВЛЕННЫЙ Переключатель монстров */}
               <div className="flex space-x-1 overflow-x-auto pb-1">
-                {monsters.map((monster, index) => (
-                  <div
-                    key={monster.name}
-                    className={`relative min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 cursor-pointer border border-gray-300 ${
-                      selectedMonsterId === monstersId[index]
-                        ? "border-2 border-purple-500"
-                        : ""
-                    }`}
-                    onClick={() => handleMonsterSwitch(monstersId[index])}
-                  >
-                    <img
-                      src={monster.face}
-                      alt={monster.name}
-                      className="w-[229px] h-[129px]"
-                    />
-                    <div className="text-center font-handwritten text-lg">
-                      {monster.name}
+                {monsters.map((monster, index) => {
+                  // ИСПРАВЛЕНИЕ: используем monsterId из самого объекта монстра
+                  const monsterId = (monster as any).monsterId;
+                  
+                  return (
+                    <div
+                      key={`${monster.name}-${monsterId}`}
+                      className={`relative min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 cursor-pointer border border-gray-300 ${
+                        selectedMonsterId === monsterId
+                          ? "border-2 border-purple-500"
+                          : ""
+                      }`}
+                      onClick={() => handleMonsterSwitch(monsterId)}
+                    >
+                      <img
+                        src={monster.face}
+                        alt={monster.name}
+                        className="w-[229px] h-[129px]"
+                      />
+                      <div className="text-center font-handwritten text-lg">
+                        {monster.name}
+                      </div>
+                      {/* Добавляем отладочную информацию для разработки */}
+                      <div className="text-xs text-gray-500 text-center">
+                        ID: {monsterId}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Энергия на воспитательные взаимодействия */}

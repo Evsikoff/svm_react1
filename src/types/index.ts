@@ -22,6 +22,7 @@ export interface NotificationResponse {
 }
 
 export interface Monster {
+  monsterId: number; // ИСПРАВЛЕНО: добавлено поле monsterId
   face: string;
   name: string;
   sequence: number;
