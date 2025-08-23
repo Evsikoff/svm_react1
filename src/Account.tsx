@@ -404,6 +404,8 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             const result = await response.json();
 
             if (result.userId) {
+              clearParams();
+
               window.location.reload();
               return;
             }
