@@ -15,6 +15,7 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
         <CompetitionEnergy userId={userId} />
       </div>
       <div className="flex-1">
+
         <ArenaMonsterSwitcher userId={userId} />
       </div>
     </div>
