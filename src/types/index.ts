@@ -43,6 +43,16 @@ export interface CompetitionEnergyResponse {
   nextfreereplenishment: string;
 }
 
+export interface ArenaMonster {
+  arenamonsterid: number;
+  arenamonstername: string;
+  arenamonsterimage: string;
+}
+
+export interface ArenaMonstersResponse {
+  arenamonsters: ArenaMonster[];
+}
+
 export interface MonsterCharacteristic {
   id: number;
   value: number;
