@@ -11,10 +11,10 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
 
   return (
     <div className="p-8 min-h-[50vh] flex flex-col md:flex-row items-center md:items-start md:space-x-4">
-      <div className="order-1 md:order-2 w-full md:w-auto">
+      <div className="w-full md:w-auto">
         <CompetitionEnergy userId={userId} />
       </div>
-      <div className="order-2 md:order-1 w-full md:w-auto mt-4 md:mt-0">
+      <div className="w-full md:w-auto mt-4 md:mt-0">
         <ArenaMonsterSwitcher userId={userId} />
       </div>
     </div>

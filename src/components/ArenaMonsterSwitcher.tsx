@@ -3,7 +3,7 @@ import axios from "axios";
 import { API_URLS } from "../constants";
 import { ArenaMonster, ArenaMonstersResponse } from "../types";
 
-const SPRITE_SCALE = 0.12; // коэффициент уменьшения спрайтов
+const SPRITE_SCALE = 0.12; // коэффициент уменьшения спрайтов (измените это значение для регулировки размера)
 const SPRITE_GAP = 20; // расстояние между спрайтами по горизонтали
 const SPRITE_BOTTOM = 20; // положение спрайтов относительно низа фона
 const SPRITE_WIDTH = 1280 * SPRITE_SCALE;
@@ -45,7 +45,7 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({ userId }) => {
   const containerWidth = bgCount * BG_WIDTH;
 
   return (
-    <div className="overflow-x-auto w-full">
+    <div className="w-full overflow-x-auto rounded-xl border-2 border-green-300 bg-green-50 shadow-md p-4">
       <div
         className="relative"
         style={{
