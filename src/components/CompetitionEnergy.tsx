@@ -54,8 +54,8 @@ const CompetitionEnergy: React.FC<Props> = ({ userId }) => {
   if (energy == null) return null;
 
   return (
-    <div className="w-full flex justify-center mb-6">
-      <div className="flex flex-col items-center rounded-xl border-2 border-blue-300 bg-blue-50 shadow-md p-4 w-full md:w-auto">
+    <div className="w-full flex justify-center mb-6 md:mb-0">
+      <div className="flex flex-col items-center md:justify-between rounded-xl border-2 border-blue-300 bg-blue-50 shadow-md p-4 w-full md:w-auto md:h-[282px]">
         <div className="flex items-center gap-3">
           <img
             src={IMAGES.competitionEnergy}
