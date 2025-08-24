@@ -10,11 +10,12 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
   if (!userId) return null;
 
   return (
-    <div className="p-8 min-h-[50vh] flex flex-col md:flex-row items-center md:items-start md:space-x-4 md:justify-center">
-      <div className="w-full md:w-auto">
+    <div className="p-8 min-h-[50vh] flex flex-col md:flex-row gap-4 md:items-start md:justify-center">
+      <div className="flex-1">
         <CompetitionEnergy userId={userId} />
       </div>
-      <div className="w-full md:w-auto mt-4 md:mt-0">
+      <div className="flex-1">
+
         <ArenaMonsterSwitcher userId={userId} />
       </div>
     </div>
