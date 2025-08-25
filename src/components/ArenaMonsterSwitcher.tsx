@@ -30,6 +30,7 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
   );
   const [isInitialized, setIsInitialized] = useState<boolean>(false); // флаг инициализации
   const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
 
   // Используем внешний selectedMonsterId если он передан, иначе внутренний
   const selectedId =
@@ -72,6 +73,14 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
     load();
   }, [userId]); // убираем propSelectedMonsterId и onMonsterChange из зависимостей
 
+  useEffect(() => {
+    const updateWidth = () =>
+      setContainerWidth(containerRef.current?.clientWidth || 0);
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
+
   const handleMonsterClick = (monsterId: number) => {
     if (propSelectedMonsterId === undefined) {
       // Управляем состоянием внутри компонента
@@ -84,10 +93,9 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
     }
   };
 
-  // Ширина содержимого зависит от числа монстров
+  // Ширина фона зависит от ширины контейнера и числа монстров
   const contentWidth = monsters.length * (SPRITE_WIDTH + SPRITE_GAP) + SPRITE_GAP;
-  const tilesCount = Math.max(1, Math.ceil(contentWidth / BG_TILE_WIDTH));
-  const backgroundWidth = tilesCount * BG_TILE_WIDTH;
+  const backgroundWidth = Math.max(containerWidth, contentWidth);
 
   return (
     <div
@@ -95,7 +103,7 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
       className="w-full overflow-x-auto rounded-xl border-2 border-green-300 bg-green-50 shadow-md p-4"
     >
       <div
-        className="relative mx-auto"
+        className="relative"
         style={{
           width: backgroundWidth,
           height: BG_HEIGHT,
