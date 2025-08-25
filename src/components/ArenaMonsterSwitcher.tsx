@@ -1,25 +1,57 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { API_URLS } from "../constants";
 import { ArenaMonster, ArenaMonstersResponse } from "../types";
 
-const SPRITE_SCALE = 0.12; // коэффициент уменьшения спрайтов (измените это значение для регулировки размера)
+const SPRITE_SCALE = 0.12; // коэффициент уменьшения спрайтов
 const SPRITE_GAP = 20; // расстояние между спрайтами по горизонтали
 const SPRITE_BOTTOM = 20; // положение спрайтов относительно низа фона
 const SPRITE_WIDTH = 1280 * SPRITE_SCALE;
 const SPRITE_HEIGHT = 853 * SPRITE_SCALE;
 
 const BG_URL = "https://storage.yandexcloud.net/svm/img/lockerroomcycle.png";
-const BG_WIDTH = 500;
+const BG_TILE_WIDTH = 500; // ширина одного тайла фонового изображения
 const BG_HEIGHT = 250;
 
 interface Props {
   userId: number;
+  selectedMonsterId?: number | null;
+  onMonsterChange?: (monsterId: number) => void;
 }
 
-const ArenaMonsterSwitcher: React.FC<Props> = ({ userId }) => {
+const ArenaMonsterSwitcher: React.FC<Props> = ({
+  userId,
+  selectedMonsterId: propSelectedMonsterId,
+  onMonsterChange,
+}) => {
   const [monsters, setMonsters] = useState<ArenaMonster[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [internalSelectedId, setInternalSelectedId] = useState<number | null>(
+    null
+  );
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false); // флаг инициализации
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Используем внешний selectedMonsterId если он передан, иначе внутренний
+  const selectedId =
+    propSelectedMonsterId !== undefined
+      ? propSelectedMonsterId
+      : internalSelectedId;
+
+  // Функция для обновления ширины контейнера
+  const updateContainerWidth = () => {
+    if (containerRef.current) {
+      const width = containerRef.current.clientWidth;
+      setContainerWidth(width);
+    }
+  };
+
+  // Слушатель изменения размера окна
+  useEffect(() => {
+    updateContainerWidth();
+    window.addEventListener("resize", updateContainerWidth);
+    return () => window.removeEventListener("resize", updateContainerWidth);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -30,29 +62,63 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({ userId }) => {
         );
         const data = res.data.arenamonsters || [];
         setMonsters(data);
-        if (data.length > 0) {
+
+        // Автоматически выбираем монстра с наименьшим arenamonsterid ТОЛЬКО при первой загрузке
+        if (data.length > 0 && !isInitialized) {
           const minId = Math.min(...data.map((m) => m.arenamonsterid));
-          setSelectedId(minId);
+
+          // Устанавливаем выбранного монстра только если не передан извне
+          if (propSelectedMonsterId === undefined) {
+            setInternalSelectedId(minId);
+          }
+
+          // Всегда уведомляем родительский компонент при первой инициализации
+          if (onMonsterChange) {
+            onMonsterChange(minId);
+          }
+
+          setIsInitialized(true); // отмечаем как инициализированный
         }
+
+        // Обновляем ширину после загрузки данных
+        setTimeout(updateContainerWidth, 0);
       } catch (e) {
-        console.error(e);
+        console.error("Ошибка загрузки монстров арены:", e);
       }
     };
     load();
-  }, [userId]);
+  }, [userId]); // убираем propSelectedMonsterId и onMonsterChange из зависимостей
 
-  const bgCount = Math.ceil(monsters.length / 3);
-  const containerWidth = bgCount * BG_WIDTH;
+  const handleMonsterClick = (monsterId: number) => {
+    if (propSelectedMonsterId === undefined) {
+      // Управляем состоянием внутри компонента
+      setInternalSelectedId(monsterId);
+    }
+
+    // Всегда уведомляем родительский компонент о ручном выборе
+    if (onMonsterChange) {
+      onMonsterChange(monsterId);
+    }
+  };
+
+  // Вычисляем количество повторений фонового тайла исходя из реальной ширины контейнера
+  const actualWidth = containerWidth - 32; // учитываем padding (16px * 2)
+  const tilesCount = Math.max(1, Math.ceil(actualWidth / BG_TILE_WIDTH));
 
   return (
-    <div className="w-full overflow-x-auto rounded-xl border-2 border-green-300 bg-green-50 shadow-md p-4">
+    <div
+      ref={containerRef}
+      className="w-full overflow-x-auto rounded-xl border-2 border-green-300 bg-green-50 shadow-md p-4"
+    >
       <div
-        className="relative"
+        className="relative mx-auto"
         style={{
-          width: containerWidth,
+          width: actualWidth, // используем точную ширину контейнера
           height: BG_HEIGHT,
           backgroundImage: `url(${BG_URL})`,
           backgroundRepeat: "repeat-x",
+          backgroundSize: `${BG_TILE_WIDTH}px ${BG_HEIGHT}px`,
+          backgroundPosition: "left top",
         }}
       >
         {monsters.map((m, index) => {
@@ -69,9 +135,16 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({ userId }) => {
                 textAlign: "center",
                 cursor: "pointer",
               }}
-              onClick={() => setSelectedId(m.arenamonsterid)}
+              onClick={() => handleMonsterClick(m.arenamonsterid)}
             >
-              <div className="font-handwritten" style={{ marginBottom: 4 }}>
+              <div
+                className="font-handwritten text-sm md:text-base mb-1 px-1"
+                style={{
+                  color: isSelected ? "#059669" : "#6b7280",
+                  fontWeight: isSelected ? "bold" : "normal",
+                  textShadow: "1px 1px 2px rgba(0,0,0,0.3)",
+                }}
+              >
                 {m.arenamonstername}
               </div>
               <img
@@ -81,11 +154,38 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({ userId }) => {
                   width: SPRITE_WIDTH,
                   height: SPRITE_HEIGHT,
                   opacity: isSelected ? 1 : 0.5,
+                  transition: "opacity 0.3s ease, transform 0.2s ease",
+                  transform: isSelected ? "scale(1.05)" : "scale(1)",
+                  filter: isSelected ? "brightness(1.1)" : "brightness(0.8)",
+                }}
+                onError={(e) => {
+                  console.error(
+                    `Ошибка загрузки изображения монстра: ${m.arenamonsterimage}`
+                  );
+                  e.currentTarget.src =
+                    "https://storage.yandexcloud.net/svm/img/placeholder-monster.png";
                 }}
               />
+
+              {/* Индикатор выбранного монстра */}
+              {isSelected && (
+                <div
+                  className="absolute -bottom-2 left-1/2 transform -translate-x-1/2"
+                  style={{ width: SPRITE_WIDTH * 0.8 }}
+                >
+                  <div className="h-1 bg-gradient-to-r from-green-400 via-green-500 to-green-400 rounded-full shadow-lg animate-pulse"></div>
+                </div>
+              )}
             </div>
           );
         })}
+
+        {/* Дополнительные декоративные элементы */}
+        <div className="absolute top-4 left-4 text-green-700 opacity-30">
+          <div className="text-xs font-medium">
+            Арена монстров ({monsters.length})
+          </div>
+        </div>
       </div>
     </div>
   );
