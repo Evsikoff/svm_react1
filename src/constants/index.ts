@@ -24,6 +24,7 @@ export const API_URLS = {
   teachenergy: "https://functions.yandexcloud.net/d4ek0gg34e57hosr45u8",
   competitionenergy: "https://functions.yandexcloud.net/d4e83k58k32gf9ibt1jt",
   arenamonsters: "https://functions.yandexcloud.net/d4es67buap1fl8ad3sp8",
+  monstercompetitions: "https://functions.yandexcloud.net/d4eal266kagbsgd7r853",
   characteristics: "https://functions.yandexcloud.net/d4eja3aglipp5f8hfb73",
   monsterroom: "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
   impacts: "https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj",
@@ -37,6 +38,7 @@ export const IMAGES = {
   energy: "https://storage.yandexcloud.net/svm/img/userteachenergy.png",
   competitionEnergy:
     "https://storage.yandexcloud.net/svm/img/usercompetitionenergy.png",
+  participants: "https://storage.yandexcloud.net/svm/img/participants.png",
 };
 
 // Последовательности меню

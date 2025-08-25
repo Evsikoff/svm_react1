@@ -78,6 +78,28 @@ export interface MonsterImpactsResponse {
   monsterimpacts: MonsterImpact[];
 }
 
+export interface MonsterCompetitionCharacteristic {
+  monstercompetitioncharacteristicid: string;
+  monstercompetitioncharacteristicimage: string;
+  monstercompetitioncharacteristicname: string;
+  monstercompetitioncharacteristicamount: number;
+}
+
+export interface MonsterCompetition {
+  monstercompetitionid: string;
+  monstercompetitionname: string;
+  monstercompetitionimage: string;
+  monstercompetitionenergyprice: number;
+  monstercompetitionparticipantsnumber: number;
+  activity: boolean;
+  monstercompetitioncharacteristics: MonsterCompetitionCharacteristic[];
+  inactivity?: string;
+}
+
+export interface MonsterCompetitionsResponse {
+  monstercompetitions: MonsterCompetition[];
+}
+
 export interface RoomItem {
   id: number;
   name: string;

@@ -15,9 +15,10 @@ const BG_HEIGHT = 250;
 
 interface Props {
   userId: number;
+  onSelect?: (id: number) => void;
 }
 
-const ArenaMonsterSwitcher: React.FC<Props> = ({ userId }) => {
+const ArenaMonsterSwitcher: React.FC<Props> = ({ userId, onSelect }) => {
   const [monsters, setMonsters] = useState<ArenaMonster[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -40,6 +41,12 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({ userId }) => {
     };
     load();
   }, [userId]);
+
+  useEffect(() => {
+    if (selectedId !== null) {
+      onSelect?.(selectedId);
+    }
+  }, [selectedId, onSelect]);
 
   const bgCount = Math.ceil(monsters.length / 3);
   const containerWidth = bgCount * BG_WIDTH;
