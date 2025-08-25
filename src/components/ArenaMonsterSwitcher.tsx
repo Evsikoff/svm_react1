@@ -29,16 +29,14 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
     null
   );
   const [containerWidth, setContainerWidth] = useState<number>(0);
-  const [isInitialized, setIsInitialized] = useState<boolean>(false); // флаг инициализации
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Используем внешний selectedMonsterId если он передан, иначе внутренний
   const selectedId =
     propSelectedMonsterId !== undefined
       ? propSelectedMonsterId
       : internalSelectedId;
 
-  // Функция для обновления ширины контейнера
   const updateContainerWidth = () => {
     if (containerRef.current) {
       const width = containerRef.current.clientWidth;
@@ -46,7 +44,6 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
     }
   };
 
-  // Слушатель изменения размера окна
   useEffect(() => {
     updateContainerWidth();
     window.addEventListener("resize", updateContainerWidth);
@@ -63,57 +60,53 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
         const data = res.data.arenamonsters || [];
         setMonsters(data);
 
-        // Автоматически выбираем монстра с наименьшим arenamonsterid ТОЛЬКО при первой загрузке
         if (data.length > 0 && !isInitialized) {
           const minId = Math.min(...data.map((m) => m.arenamonsterid));
-
-          // Устанавливаем выбранного монстра только если не передан извне
           if (propSelectedMonsterId === undefined) {
             setInternalSelectedId(minId);
           }
-
-          // Всегда уведомляем родительский компонент при первой инициализации
           if (onMonsterChange) {
             onMonsterChange(minId);
           }
-
-          setIsInitialized(true); // отмечаем как инициализированный
+          setIsInitialized(true);
         }
 
-        // Обновляем ширину после загрузки данных
         setTimeout(updateContainerWidth, 0);
       } catch (e) {
         console.error("Ошибка загрузки монстров арены:", e);
       }
     };
     load();
-  }, [userId]); // убираем propSelectedMonsterId и onMonsterChange из зависимостей
+    // Просто удаляем строку с комментарием eslint-disable-next-line
+  }, [userId]);
 
   const handleMonsterClick = (monsterId: number) => {
     if (propSelectedMonsterId === undefined) {
-      // Управляем состоянием внутри компонента
       setInternalSelectedId(monsterId);
     }
-
-    // Всегда уведомляем родительский компонент о ручном выборе
     if (onMonsterChange) {
       onMonsterChange(monsterId);
     }
   };
 
-  // Вычисляем количество повторений фонового тайла исходя из реальной ширины контейнера
-  const actualWidth = containerWidth - 32; // учитываем padding (16px * 2)
-  const tilesCount = Math.max(1, Math.ceil(actualWidth / BG_TILE_WIDTH));
+  const visibleWidth = containerWidth > 32 ? containerWidth - 32 : 0;
+
+  const totalSpritesWidth =
+    monsters.length > 0
+      ? monsters.length * (SPRITE_WIDTH + SPRITE_GAP) + SPRITE_GAP
+      : 0;
+
+  const contentWidth = Math.max(visibleWidth, totalSpritesWidth);
 
   return (
     <div
       ref={containerRef}
-      className="w-full overflow-x-auto rounded-xl border-2 border-green-300 bg-green-50 shadow-md p-4"
+      className="w-full min-w-0 overflow-x-auto rounded-xl border-2 border-green-300 bg-green-50 shadow-md p-4"
     >
       <div
-        className="relative mx-auto"
+        className="relative"
         style={{
-          width: actualWidth, // используем точную ширину контейнера
+          width: contentWidth,
           height: BG_HEIGHT,
           backgroundImage: `url(${BG_URL})`,
           backgroundRepeat: "repeat-x",
@@ -166,8 +159,6 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
                     "https://storage.yandexcloud.net/svm/img/placeholder-monster.png";
                 }}
               />
-
-              {/* Индикатор выбранного монстра */}
               {isSelected && (
                 <div
                   className="absolute -bottom-2 left-1/2 transform -translate-x-1/2"
@@ -180,7 +171,6 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
           );
         })}
 
-        {/* Дополнительные декоративные элементы */}
         <div className="absolute top-4 left-4 text-green-700 opacity-30">
           <div className="text-xs font-medium">
             Арена монстров ({monsters.length})

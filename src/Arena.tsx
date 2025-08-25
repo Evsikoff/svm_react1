@@ -29,7 +29,7 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
           <div className="flex-shrink-0">
             <CompetitionEnergy userId={userId} />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <ArenaMonsterSwitcher
               userId={userId}
               selectedMonsterId={selectedMonsterId}
