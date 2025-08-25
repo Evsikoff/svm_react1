@@ -100,7 +100,7 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
   return (
     <div
       ref={containerRef}
-      className="w-full overflow-x-auto rounded-xl border-2 border-green-300 bg-green-50 shadow-md p-4"
+      className="w-full max-w-full min-w-0 overflow-x-auto rounded-xl border-2 border-green-300 bg-green-50 shadow-md p-4"
     >
       <div
         className="relative"
