@@ -28,7 +28,6 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
   const [internalSelectedId, setInternalSelectedId] = useState<number | null>(
     null
   );
-  const [containerWidth, setContainerWidth] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState<boolean>(false); // флаг инициализации
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -38,20 +37,6 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
       ? propSelectedMonsterId
       : internalSelectedId;
 
-  // Функция для обновления ширины контейнера
-  const updateContainerWidth = () => {
-    if (containerRef.current) {
-      const width = containerRef.current.clientWidth;
-      setContainerWidth(width);
-    }
-  };
-
-  // Слушатель изменения размера окна
-  useEffect(() => {
-    updateContainerWidth();
-    window.addEventListener("resize", updateContainerWidth);
-    return () => window.removeEventListener("resize", updateContainerWidth);
-  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -80,8 +65,6 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
           setIsInitialized(true); // отмечаем как инициализированный
         }
 
-        // Обновляем ширину после загрузки данных
-        setTimeout(updateContainerWidth, 0);
       } catch (e) {
         console.error("Ошибка загрузки монстров арены:", e);
       }
@@ -101,9 +84,10 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
     }
   };
 
-  // Вычисляем количество повторений фонового тайла исходя из реальной ширины контейнера
-  const actualWidth = containerWidth - 32; // учитываем padding (16px * 2)
-  const tilesCount = Math.max(1, Math.ceil(actualWidth / BG_TILE_WIDTH));
+  // Ширина содержимого зависит от числа монстров
+  const contentWidth = monsters.length * (SPRITE_WIDTH + SPRITE_GAP) + SPRITE_GAP;
+  const tilesCount = Math.max(1, Math.ceil(contentWidth / BG_TILE_WIDTH));
+  const backgroundWidth = tilesCount * BG_TILE_WIDTH;
 
   return (
     <div
@@ -113,7 +97,7 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
       <div
         className="relative mx-auto"
         style={{
-          width: actualWidth, // используем точную ширину контейнера
+          width: backgroundWidth,
           height: BG_HEIGHT,
           backgroundImage: `url(${BG_URL})`,
           backgroundRepeat: "repeat-x",
