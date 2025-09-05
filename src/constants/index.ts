@@ -28,6 +28,8 @@ export const API_URLS = {
   monsterroom: "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
   impacts: "https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj",
   impact: "https://functions.yandexcloud.net/d4een4tv1fhjs9o05ogj",
+  competitioninstance:
+    "https://functions.yandexcloud.net/d4euroa2kfgg47hna4f0",
 };
 
 // Образы и иконки

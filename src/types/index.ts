@@ -204,3 +204,66 @@ export interface MonsterWithItems {
 export interface MonsterItemsResponse {
   monsters: MonsterWithItems[];
 }
+
+// Типы для блока "Текущее состязание"
+export interface CompetitionInstanceApiResponse {
+  text: string;
+  competitionsinstance: CompetitionInstance;
+}
+
+export interface CompetitionInstance {
+  competitionsinstanceid: number;
+  prizeitem: PrizeItem;
+  competitionsinstancessteps: CompetitionStep[];
+  monstercharacteristics: CompetitionMonsterCharacteristics[];
+  monsteritems: CompetitionMonsterItems[];
+  monsterswinners: { monsterwinnerid: number }[];
+}
+
+export interface PrizeItem {
+  prizeitemid: number;
+  prizeitemname: string;
+  prizeitemimage: string;
+  prizeitemdescr: string;
+}
+
+export interface CompetitionStep {
+  sequence: number;
+  name: string;
+  description: string;
+  image: string;
+  monsters: StepMonster[];
+}
+
+export interface StepMonster {
+  monsterid: number;
+  xaxis: number;
+  yaxis: number;
+  scale: number;
+  formulatext: string;
+  points: number;
+  winner: boolean;
+}
+
+export interface CompetitionMonsterCharacteristics {
+  monsteridforchar: number;
+  monstername: string;
+  monsterimage: string;
+  characteristics: {
+    characteristicid: number;
+    name: string;
+    icon: string;
+    value: number;
+  }[];
+}
+
+export interface CompetitionMonsterItems {
+  monsteridforitem: number;
+  items: {
+    inventoryid: number;
+    inventoryname: string;
+    inventoryimage: string;
+    inventorydescription: string;
+    activity: boolean | string;
+  }[];
+}
