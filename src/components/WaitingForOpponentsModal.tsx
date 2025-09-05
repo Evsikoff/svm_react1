@@ -40,6 +40,25 @@ const WaitingForOpponentsModal: React.FC<WaitingProps> = ({
         })
       );
     };
+    const startCompetition = (id: number) => {
+      axios
+        .post(
+          START_ENDPOINT,
+          { competitionsinstanceid: id },
+          { timeout: 6000 }
+        )
+        .then(() => {
+          onCompetitionStart(id);
+        })
+        .catch((err: any) => {
+          if (err.code === "ECONNABORTED") {
+            startCompetition(id);
+          } else {
+            console.error("Ошибка старта состязания", err);
+          }
+        });
+    };
+
     ws.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
@@ -51,12 +70,7 @@ const WaitingForOpponentsModal: React.FC<WaitingProps> = ({
         if (payload.competitionsinstanceid) {
           const id = payload.competitionsinstanceid as number;
           setStage("starting");
-          axios
-            .post(START_ENDPOINT, { competitionsinstanceid: id })
-            .then(() => {
-              onCompetitionStart(id);
-            })
-            .catch((err) => console.error("Ошибка старта состязания", err));
+          startCompetition(id);
         }
       } catch (e) {
         console.error("Ошибка обработки сообщения WebSocket", e);
