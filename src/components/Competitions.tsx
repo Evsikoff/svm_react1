@@ -48,18 +48,32 @@ const Competitions: React.FC<CompetitionsProps> = ({
     setLoading(true);
     setError("");
 
-    try {
-      const response = await axios.post<CompetitionsResponse>(
-        "https://functions.yandexcloud.net/d4eal266kagbsgd7r853",
-        { monsterId }
-      );
+    const MAX_RETRIES = 2;
 
-      setCompetitions(response.data.monstercompetitions || []);
-    } catch (err) {
-      console.error("Ошибка при загрузке состязаний:", err);
-      setError("Ошибка при загрузке состязаний");
-    } finally {
-      setLoading(false);
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await axios.post<CompetitionsResponse>(
+          "https://functions.yandexcloud.net/d4eal266kagbsgd7r853",
+          { monsterId },
+          { timeout: 5000 }
+        );
+
+        setCompetitions(response.data.monstercompetitions || []);
+        setLoading(false);
+        return;
+      } catch (err) {
+        const isTimeout =
+          axios.isAxiosError(err) && err.code === "ECONNABORTED";
+
+        if (isTimeout && attempt < MAX_RETRIES) {
+          continue;
+        }
+
+        console.error("Ошибка при загрузке состязаний:", err);
+        setError("Ошибка при загрузке состязаний");
+        setLoading(false);
+        return;
+      }
     }
   };
 
