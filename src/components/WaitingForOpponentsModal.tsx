@@ -73,34 +73,42 @@ const WaitingForOpponentsModal: React.FC<WaitingProps> = ({
   const seconds = (timer % 60).toString().padStart(2, "0");
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md text-center space-y-4">
-        {stage === "waiting" ? (
-          <>
-            <h2 className="text-xl font-bold">Ожидание соперников</h2>
-            <img
-              src={GIF_URL}
-              alt="Ожидание"
-              className="mx-auto"
-              width={480}
-              height={270}
-            />
-            <div className="text-gray-700">
-              Примерное время ожидания соперников
-            </div>
-            <div className="text-2xl font-mono">
-              {minutes}:{seconds}
-            </div>
-            {message && (
-              <div className="mt-4 text-gray-800">{message}</div>
-            )}
-          </>
-        ) : (
-          <>
-            <Spinner size="large" />
-            <div className="text-gray-800">Соревнования почти началось</div>
-          </>
-        )}
+    <div className="fixed inset-0 flex items-center justify-center z-[120] bg-black/60">
+      <div className="bg-gradient-to-br from-purple-50 to-orange-50 p-[2px] rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="bg-white rounded-2xl p-6 text-center space-y-4">
+          {stage === "waiting" ? (
+            <>
+              <h2 className="text-2xl font-bold text-purple-700">
+                Ожидание соперников
+              </h2>
+              <img
+                src={GIF_URL}
+                alt="Ожидание"
+                className="mx-auto rounded-lg shadow-md"
+                width={480}
+                height={270}
+              />
+              <div className="text-gray-700">
+                Примерное время ожидания соперников
+              </div>
+              <div className="text-3xl font-mono font-semibold text-purple-700 tracking-widest">
+                {minutes}:{seconds}
+              </div>
+              {message && (
+                <div className="px-4 py-2 bg-purple-100 text-purple-800 rounded-lg shadow-inner">
+                  {message}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <Spinner size="large" />
+              <div className="text-lg font-medium text-purple-800">
+                Соревнование почти началось
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
