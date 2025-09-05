@@ -1,6 +1,7 @@
 // src/components/Competitions.tsx - компонент "Состязания"
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import WaitingForOpponentsModal from "./WaitingForOpponentsModal";
 
 interface MonsterCompetitionCharacteristic {
   monstercompetitioncharacteristicid: string;
@@ -27,15 +28,20 @@ interface CompetitionsResponse {
 interface CompetitionsProps {
   selectedMonsterId: number | null;
   userId: number | null;
+  onCompetitionStart?: (id: number) => void;
 }
 
 const Competitions: React.FC<CompetitionsProps> = ({
   selectedMonsterId,
   userId,
+  onCompetitionStart,
 }) => {
   const [competitions, setCompetitions] = useState<MonsterCompetition[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState<string | null>(
+    null
+  );
 
   // Функция загрузки состязаний
   const loadCompetitions = async (monsterId: number) => {
@@ -67,8 +73,7 @@ const Competitions: React.FC<CompetitionsProps> = ({
   // Обработчик клика по активному состязанию
   const handleCompetitionClick = (competition: MonsterCompetition) => {
     if (competition.activity) {
-      // Здесь можно добавить логику для начала состязания
-      console.log("Начать состязание:", competition.monstercompetitionname);
+      setSelectedCompetitionId(competition.monstercompetitionid);
     }
   };
 
@@ -219,6 +224,18 @@ const Competitions: React.FC<CompetitionsProps> = ({
           </div>
         </div>
       ))}
+      {selectedCompetitionId && selectedMonsterId && (
+        <WaitingForOpponentsModal
+          monsterId={selectedMonsterId}
+          competitionId={selectedCompetitionId}
+          onCompetitionStart={(id) => {
+            setSelectedCompetitionId(null);
+            if (onCompetitionStart) {
+              onCompetitionStart(id);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

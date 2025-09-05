@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import CompetitionEnergy from "./components/CompetitionEnergy";
 import ArenaMonsterSwitcher from "./components/ArenaMonsterSwitcher";
 import Competitions from "./components/Competitions";
+import CurrentCompetition from "./components/CurrentCompetition";
 
 interface ArenaProps {
   userId: number | null;
@@ -12,13 +13,23 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
   const [selectedMonsterId, setSelectedMonsterId] = useState<number | null>(
     null
   );
+  const [currentCompetitionId, setCurrentCompetitionId] =
+    useState<number | null>(null);
 
   // Обработчик смены монстра из ArenaMonsterSwitcher
   const handleMonsterChange = (monsterId: number) => {
     setSelectedMonsterId(monsterId);
   };
 
+  const handleCompetitionStart = (id: number) => {
+    setCurrentCompetitionId(id);
+  };
+
   if (!userId) return null;
+
+  if (currentCompetitionId) {
+    return <CurrentCompetition competitionsInstanceId={currentCompetitionId} />;
+  }
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -55,7 +66,11 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
           <h2 className="text-2xl md:text-3xl font-bold text-orange-800 mb-6 text-center">
             Состязания
           </h2>
-          <Competitions selectedMonsterId={selectedMonsterId} userId={userId} />
+          <Competitions
+            selectedMonsterId={selectedMonsterId}
+            userId={userId}
+            onCompetitionStart={handleCompetitionStart}
+          />
         </div>
       </div>
     </div>
