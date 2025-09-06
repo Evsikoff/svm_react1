@@ -114,7 +114,8 @@ const Shop: React.FC<Props> = ({ userId }) => {
           () =>
             axios.post<ShopResponse>(
               "https://functions.yandexcloud.net/d4eq0b2po3vrtvgqbori",
-              { userId }
+              { userId },
+              { timeout: 3000 }
             ),
           (r) => Array.isArray((r as any)?.data?.inventoryitems),
           "Ошибка при загрузке магазина"
