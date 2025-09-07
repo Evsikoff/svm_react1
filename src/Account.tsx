@@ -109,8 +109,12 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
         auto_select: false,
         cancel_on_tap_outside: true,
         context: "use",
-        // Enable FedCM to ensure the Google prompt is displayed even when
-        // third-party cookies are blocked by the browser
+
+        // Ensure the Google prompt can appear even when third-party cookies
+        // are blocked by the browser by enabling both the older ITP fallback
+        // flow and the newer FedCM mechanism
+        itp_support: true,
+
         use_fedcm_for_prompt: true,
       });
       initialized.current = true;
