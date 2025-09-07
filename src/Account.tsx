@@ -110,6 +110,11 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
         cancel_on_tap_outside: true,
         context: "use",
 
+        // Ensure the Google prompt can appear even when third-party cookies
+        // are blocked by the browser by enabling both the older ITP fallback
+        // flow and the newer FedCM mechanism
+        itp_support: true,
+
         use_fedcm_for_prompt: true,
       });
       initialized.current = true;
@@ -120,7 +125,13 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
 
   // Колбэк для Google
   const handleGoogleCallback = async (response: any) => {
-    if (!response.credential || !googleMode) {
+    // Игнорируем неожиданные колбэки, которые могут срабатывать при
+    // инициализации, когда пользователь ещё не начинал авторизацию
+    if (!googleMode) {
+      return;
+    }
+
+    if (!response.credential) {
       handleGoogleError();
       return;
     }
