@@ -110,11 +110,6 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
         cancel_on_tap_outside: true,
         context: "use",
 
-        // Ensure the Google prompt can appear even when third-party cookies
-        // are blocked by the browser by enabling both the older ITP fallback
-        // flow and the newer FedCM mechanism
-        itp_support: true,
-
         use_fedcm_for_prompt: true,
       });
       initialized.current = true;
@@ -192,6 +187,33 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     setGoogleMode(null);
   };
 
+  // Фолбэк на OAuth2 попап, если стандартный prompt не отображается
+  const startGoogleOAuthFallback = () => {
+    if (
+      !window.google ||
+      !window.google.accounts ||
+      !window.google.accounts.oauth2
+    ) {
+      console.error("Google OAuth2 недоступен");
+      handleGoogleError();
+      return;
+    }
+
+    const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: "openid profile email",
+      callback: (tokenResponse: any) => {
+        if (tokenResponse && tokenResponse.id_token) {
+          handleGoogleCallback({ credential: tokenResponse.id_token });
+        } else {
+          handleGoogleError();
+        }
+      },
+    });
+
+    tokenClient.requestAccessToken({ prompt: "consent" });
+  };
+
   // Обработчик нажатия на кнопку "Подключить Google"
   const handleConnectGoogle = () => {
     if (!window.google || !window.google.accounts || !initialized.current) {
@@ -206,8 +228,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     window.google.accounts.id.prompt((notification: any) => {
       if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
         console.warn("Google prompt skipped or not displayed");
-        setGoogleLoading(false);
-        setGoogleMode(null);
+        startGoogleOAuthFallback();
       }
     });
   };
@@ -226,8 +247,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     window.google.accounts.id.prompt((notification: any) => {
       if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
         console.warn("Google prompt skipped or not displayed");
-        setGoogleLoading(false);
-        setGoogleMode(null);
+        startGoogleOAuthFallback();
       }
     });
   };
