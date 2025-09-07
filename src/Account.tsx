@@ -1,5 +1,5 @@
 // Account.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 
 // Типы данных для ответа от сервера
 interface UserAccountData {
@@ -39,7 +39,6 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [yandexLoading, setYandexLoading] = useState(false);
   const [vkLoading, setVkLoading] = useState(false);
-  const [googleMode, setGoogleMode] = useState<'connect' | 'auth' | null>(null);
 
   // Константы OAuth
   const GOOGLE_CLIENT_ID =
@@ -49,17 +48,10 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
   const VK_CLIENT_ID = "54069665";
   const VK_CLIENT_SECRET = "wD4EGCDwIg5lpTO1s8tj";
 
-  // URL для Yandex функций
-  const CONNECT_URL = "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r";
-  const AUTH_URL = "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r";
-
-  const initialized = useRef(false);
-
-  // Загрузка Google API скрипта
+  // Загрузка Google API скрипта (убираем видимую кнопку)
   useEffect(() => {
     const loadGoogleScript = () => {
       if (window.google || document.getElementById("google-signin-script")) {
-        initializeGoogle();
         return Promise.resolve();
       }
 
@@ -69,10 +61,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
         script.src = "https://accounts.google.com/gsi/client";
         script.async = true;
         script.defer = true;
-        script.onload = () => {
-          initializeGoogle();
-          resolve();
-        };
+        script.onload = () => resolve();
         script.onerror = () =>
           reject(new Error("Failed to load Google script"));
         document.head.appendChild(script);
@@ -96,186 +85,6 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
       }
     };
   }, []);
-
-  const initializeGoogle = () => {
-    if (initialized.current || !window.google || !window.google.accounts) {
-      return;
-    }
-
-    try {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCallback,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-        context: "use",
-
-        // Ensure the Google prompt can appear even when third-party cookies
-        // are blocked by the browser by enabling both the older ITP fallback
-        // flow and the newer FedCM mechanism
-        itp_support: true,
-
-        use_fedcm_for_prompt: true,
-      });
-      initialized.current = true;
-    } catch (error) {
-      console.error("Ошибка инициализации Google:", error);
-    }
-  };
-
-  // Колбэк для Google
-  const handleGoogleCallback = async (response: any) => {
-    // Игнорируем неожиданные колбэки, которые могут срабатывать при
-    // инициализации, когда пользователь ещё не начинал авторизацию
-    if (!googleMode) {
-      return;
-    }
-
-    if (!response.credential) {
-      handleGoogleError();
-      return;
-    }
-
-    setGoogleLoading(true);
-
-    try {
-      const credential = response.credential;
-      const payloadStr = base64UrlDecode(credential.split(".")[1]);
-      const payload = JSON.parse(payloadStr);
-
-      const googleData = {
-        userId: userId,
-        newserviceid: payload.sub,
-        newservicename: payload.name || "",
-        newserviceimage: payload.picture,
-        service: "google",
-      };
-
-      const url = googleMode === 'auth' ? AUTH_URL : CONNECT_URL;
-
-      const fetchResponse = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json; charset=utf-8",
-        },
-        body: JSON.stringify(googleData),
-      });
-
-      if (!fetchResponse.ok) {
-        throw new Error(`HTTP error! status: ${fetchResponse.status}`);
-      }
-
-      const result = await fetchResponse.json();
-
-      if (googleMode === 'auth') {
-        if (result.userId) {
-          window.location.reload();
-          return;
-        }
-        setModalMessage(result.text || "Авторизация Google не удалась");
-      } else {
-        setModalMessage(result.text || "Google аккаунт успешно подключен");
-        await loadUserData();
-      }
-
-      setShowModal(true);
-    } catch (err: any) {
-      console.error(`Ошибка при ${googleMode === 'auth' ? 'авторизации' : 'подключении'} Google:`, err);
-      setModalMessage(`Ошибка при ${googleMode === 'auth' ? 'авторизации' : 'подключении'} Google`);
-      setShowModal(true);
-    } finally {
-      setGoogleLoading(false);
-      setGoogleMode(null);
-    }
-  };
-
-  // Функция обработки ошибки авторизации Google
-  const handleGoogleError = () => {
-    console.error("Google авторизация не удалась");
-    setGoogleLoading(false);
-    setModalMessage("Авторизация Google не удалась. Попробуйте еще раз.");
-    setShowModal(true);
-    setGoogleMode(null);
-  };
-
-  // Фолбэк на OAuth2 попап, если стандартный prompt не отображается
-  const startGoogleOAuthFallback = () => {
-    if (
-      !window.google ||
-      !window.google.accounts ||
-      !window.google.accounts.oauth2
-    ) {
-      console.error("Google OAuth2 недоступен");
-      handleGoogleError();
-      return;
-    }
-
-    const tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: "openid profile email",
-      callback: (tokenResponse: any) => {
-        if (tokenResponse && tokenResponse.id_token) {
-          handleGoogleCallback({ credential: tokenResponse.id_token });
-        } else {
-          handleGoogleError();
-        }
-      },
-    });
-
-    tokenClient.requestAccessToken({ prompt: "consent" });
-  };
-
-  // Обработчик нажатия на кнопку "Подключить Google"
-  const handleConnectGoogle = () => {
-    if (!window.google || !window.google.accounts || !initialized.current) {
-      console.error("Google SDK не загружен или не инициализирован");
-      setModalMessage("Google SDK не загружен. Попробуйте обновить страницу.");
-      setShowModal(true);
-      return;
-    }
-
-    setGoogleMode('connect');
-    setGoogleLoading(true);
-    window.google.accounts.id.prompt((notification: any) => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        console.warn("Google prompt skipped or not displayed");
-        startGoogleOAuthFallback();
-      }
-    });
-  };
-
-  // Обработчик нажатия на кнопку авторизации Google
-  const handleAuthGoogle = () => {
-    if (!window.google || !window.google.accounts || !initialized.current) {
-      console.error("Google SDK не загружен или не инициализирован");
-      setModalMessage("Google SDK не загружен. Попробуйте обновить страницу.");
-      setShowModal(true);
-      return;
-    }
-
-    setGoogleMode('auth');
-    setGoogleLoading(true);
-    window.google.accounts.id.prompt((notification: any) => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        console.warn("Google prompt skipped or not displayed");
-        startGoogleOAuthFallback();
-      }
-    });
-  };
-
-  // Функция для декодирования base64url с поддержкой UTF-8
-  const base64UrlDecode = (str: string): string => {
-    str = str.replace(/-/g, "+").replace(/_/g, "/");
-    while (str.length % 4) str += "=";
-
-    const binary = atob(str);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-
-    return new TextDecoder("utf-8").decode(bytes);
-  };
 
   // Загрузка данных пользователя
   const loadUserData = async () => {
@@ -334,9 +143,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     if (state !== "vk") return;
 
     if (error) {
-      setModalMessage(
-        errorDescription || "Авторизация VK не удалась"
-      );
+      setModalMessage(errorDescription || "Авторизация VK не удалась");
       setShowModal(true);
       url.searchParams.delete("error");
       url.searchParams.delete("error_description");
@@ -357,30 +164,25 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     if (code && deviceId && userId) {
       setVkLoading(true);
       const redirectUri = window.location.origin + window.location.pathname;
-      const codeVerifier =
-        sessionStorage.getItem("vk_code_verifier") || "";
+      const codeVerifier = sessionStorage.getItem("vk_code_verifier") || "";
 
       const fetchVkData = async () => {
         try {
-          const tokenResponse = await fetch(
-            "https://id.vk.com/oauth2/auth",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                grant_type: "authorization_code",
-                client_id: VK_CLIENT_ID,
-                client_secret: VK_CLIENT_SECRET,
-                code,
-                device_id: deviceId,
-                redirect_uri: redirectUri,
-                code_verifier: codeVerifier,
-              }),
-            }
-
-          );
+          const tokenResponse = await fetch("https://id.vk.com/oauth2/auth", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              grant_type: "authorization_code",
+              client_id: VK_CLIENT_ID,
+              client_secret: VK_CLIENT_SECRET,
+              code,
+              device_id: deviceId,
+              redirect_uri: redirectUri,
+              code_verifier: codeVerifier,
+            }),
+          });
 
           const tokenData = await tokenResponse.json();
           if (tokenData.error) {
@@ -412,9 +214,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
               fullName =
                 fullName ||
                 payload.name ||
-                `${payload.first_name || ""} ${
-                  payload.last_name || ""
-                }`.trim();
+                `${payload.first_name || ""} ${payload.last_name || ""}`.trim();
               avatar = avatar || payload.picture || "";
             } catch (e) {
               console.error("VK id_token parse error:", e);
@@ -442,22 +242,26 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             }
           }
 
-          const response = await fetch(CONNECT_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              userId,
-              newserviceid: String(vkUserId || ""),
-              newservicename: fullName,
-              newserviceimage: avatar,
-              service: "vk",
-            }),
-          });
+          await fetch(
+            "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                userId,
 
-          const result = await response.json();
-          setModalMessage(result.text || "VK аккаунт успешно подключен");
+                newserviceid: String(vkUserId || ""),
+
+                newservicename: fullName,
+                newserviceimage: avatar,
+                service: "vk",
+              }),
+            }
+          );
+
+          setModalMessage("VK аккаунт успешно подключен");
           setShowModal(true);
           await loadUserData();
         } catch (err) {
@@ -563,19 +367,22 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
               ? ""
               : `https://avatars.yandex.net/get-yapic/${info.default_avatar_id}/islands-200`;
 
-            const response = await fetch(AUTH_URL, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                userId,
-                newserviceid: info.id,
-                newservicename: info.display_name || info.login,
-                newserviceimage: avatarUrl,
-                service: "yandex",
-              }),
-            });
+            const response = await fetch(
+              "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  userId,
+                  newserviceid: info.id,
+                  newservicename: info.display_name || info.login,
+                  newserviceimage: avatarUrl,
+                  service: "yandex",
+                }),
+              }
+            );
 
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
@@ -658,22 +465,24 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             ? ""
             : `https://avatars.yandex.net/get-yapic/${info.default_avatar_id}/islands-200`;
 
-          const response = await fetch(CONNECT_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              userId,
-              newserviceid: info.id,
-              newservicename: info.display_name || info.login,
-              newserviceimage: avatarUrl,
-              service: "yandex",
-            }),
-          });
+          await fetch(
+            "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                userId,
+                newserviceid: info.id,
+                newservicename: info.display_name || info.login,
+                newserviceimage: avatarUrl,
+                service: "yandex",
+              }),
+            }
+          );
 
-          const result = await response.json();
-          setModalMessage(result.text || "Yandex аккаунт успешно подключен");
+          setModalMessage("Yandex аккаунт успешно подключен");
           setShowModal(true);
           await loadUserData();
         } catch (err) {
@@ -690,11 +499,127 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     }
   }, [userId]);
 
+  // Функция для декодирования base64url с поддержкой UTF-8
+  const base64UrlDecode = (str: string): string => {
+    str = str.replace(/-/g, "+").replace(/_/g, "/");
+    while (str.length % 4) str += "=";
+
+    const binary = atob(str);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    return new TextDecoder("utf-8").decode(bytes);
+  };
+
+  // Функция обработки успешной авторизации Google
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setGoogleLoading(true);
+
+    try {
+      // Декодируем JWT токен правильно с поддержкой UTF-8
+      const credential = credentialResponse.credential;
+      const payloadStr = base64UrlDecode(credential.split(".")[1]);
+      const payload = JSON.parse(payloadStr);
+
+      const googleUserData = {
+        userId: userId,
+        newserviceid: payload.sub, // Google ID пользователя
+        newservicename: payload.name || "", // Имя пользователя (уже в правильной кодировке)
+        newserviceimage: payload.picture, // URL аватара
+        service: "google",
+      };
+
+      console.log("Отправляем данные в Yandex функцию:", googleUserData);
+
+      // Отправляем данные в Yandex функцию
+      const response = await fetch(
+        "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+          },
+          body: JSON.stringify(googleUserData),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Показываем ответ от функции
+      setModalMessage(result.text || "Google аккаунт успешно подключен");
+      setShowModal(true);
+
+      // Обновляем данные пользователя
+      await loadUserData();
+    } catch (err: any) {
+      console.error("Ошибка при подключении Google аккаунта:", err);
+      setModalMessage("Ошибка при подключении Google аккаунта");
+      setShowModal(true);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // Функция обработки ошибки авторизации Google
+  const handleGoogleError = () => {
+    console.error("Google авторизация не удалась");
+    setGoogleLoading(false);
+    setModalMessage("Авторизация Google не удалась. Попробуйте еще раз.");
+    setShowModal(true);
+  };
+
+  // Обработчик нажатия на кнопку "Подключить Google"
+  const handleConnectGoogle = () => {
+    if (!window.google || !window.google.accounts) {
+      console.error("Google SDK не загружен");
+      setModalMessage("Google SDK не загружен. Попробуйте обновить страницу.");
+      setShowModal(true);
+      return;
+    }
+
+    try {
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.warn("Google prompt skipped or not displayed");
+        }
+      });
+
+      // Инициализируем One Tap с callback
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (response: any) => {
+          if (response.credential) {
+            handleGoogleSuccess(response);
+          } else {
+            handleGoogleError();
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        context: "use",
+      });
+
+      // Показываем One Tap prompt
+      window.google.accounts.id.prompt();
+    } catch (error) {
+      console.error("Ошибка инициализации Google:", error);
+      setModalMessage("Ошибка при подключении Google");
+      setShowModal(true);
+    }
+  };
+
   // Обработчик нажатия на кнопку "Подключить Yandex"
   const handleConnectYandex = () => {
     const redirectUri = window.location.origin + window.location.pathname;
-    const authUrl =
-      `https://oauth.yandex.ru/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const authUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}`;
     setYandexLoading(true);
     window.location.href = authUrl;
   };
@@ -703,16 +628,12 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
   const generateRandomString = (length: number): string => {
     const array = new Uint8Array(length);
     window.crypto.getRandomValues(array);
-    return Array.from(array, (dec) =>
-      dec.toString(16).padStart(2, "0")
-    )
+    return Array.from(array, (dec) => dec.toString(16).padStart(2, "0"))
       .join("")
       .slice(0, length);
   };
 
-  const generateCodeChallenge = async (
-    verifier: string
-  ): Promise<string> => {
+  const generateCodeChallenge = async (verifier: string): Promise<string> => {
     const data = new TextEncoder().encode(verifier);
     const digest = await window.crypto.subtle.digest("SHA-256", data);
     return btoa(String.fromCharCode(...Array.from(new Uint8Array(digest))))
@@ -727,10 +648,9 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     const codeVerifier = generateRandomString(64);
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     sessionStorage.setItem("vk_code_verifier", codeVerifier);
-    const authUrl =
-      `https://id.vk.com/authorize?client_id=${VK_CLIENT_ID}&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&response_type=code&state=vk&code_challenge=${codeChallenge}&code_challenge_method=s256`;
+    const authUrl = `https://id.vk.com/authorize?client_id=${VK_CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&response_type=code&state=vk&code_challenge=${codeChallenge}&code_challenge_method=s256`;
 
     setVkLoading(true);
     window.location.href = authUrl;
@@ -804,17 +724,114 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
     }
   };
 
+  // Функция обработки успешной авторизации Google во фрейме "Авторизация"
+  const handleGoogleAuthSuccess = async (credentialResponse: any) => {
+    setGoogleLoading(true);
+
+    try {
+      const credential = credentialResponse.credential;
+      const payloadStr = base64UrlDecode(credential.split(".")[1]);
+      const payload = JSON.parse(payloadStr);
+
+      const googleAuthData = {
+        userId: userId,
+        newserviceid: payload.sub,
+        newservicename: payload.name || "",
+        newserviceimage: payload.picture,
+        service: "google",
+      };
+
+      const response = await fetch(
+        "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+          },
+          body: JSON.stringify(googleAuthData),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.userId) {
+        window.location.reload();
+        return;
+      }
+
+      setModalMessage(result.text || "Авторизация Google не удалась");
+      setShowModal(true);
+    } catch (err: any) {
+      console.error("Ошибка при авторизации через Google:", err);
+      setModalMessage("Ошибка при авторизации Google");
+      setShowModal(true);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // Обработчик ошибки авторизации Google
+  const handleGoogleAuthError = () => {
+    console.error("Google авторизация не удалась");
+    setGoogleLoading(false);
+    setModalMessage("Авторизация Google не удалась. Попробуйте еще раз.");
+    setShowModal(true);
+  };
+
+  // Обработчик нажатия на кнопку авторизации Google
+  const handleAuthGoogle = () => {
+    if (!window.google || !window.google.accounts) {
+      console.error("Google SDK не загружен");
+      setModalMessage("Google SDK не загружен. Попробуйте обновить страницу.");
+      setShowModal(true);
+      return;
+    }
+
+    try {
+      window.google.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.warn("Google prompt skipped or not displayed");
+        }
+      });
+
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (response: any) => {
+          if (response.credential) {
+            handleGoogleAuthSuccess(response);
+          } else {
+            handleGoogleAuthError();
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        context: "use",
+      });
+
+      window.google.accounts.id.prompt();
+    } catch (error) {
+      console.error("Ошибка инициализации Google:", error);
+      setModalMessage("Ошибка авторизации Google");
+      setShowModal(true);
+    }
+  };
+
   // Обработчик нажатия на кнопку авторизации Yandex
   const handleAuthYandex = () => {
     const redirectUri = window.location.origin + window.location.pathname;
-    const authUrl =
-      `https://oauth.yandex.ru/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=yandex_auth`;
+    const authUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&state=yandex_auth`;
     setYandexLoading(true);
     window.location.href = authUrl;
   };
 
   // Функция обработки нажатия кнопки авторизации
-  const handleAuthClick = (service: "google" | "yandex") => {
+  const handleAuthClick = (service: "google" | "yandex" | "vk") => {
     switch (service) {
       case "google":
         handleAuthGoogle();
@@ -822,6 +839,13 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
       case "yandex":
         handleAuthYandex();
         break;
+      default:
+        setModalMessage(
+          `Авторизация через ${
+            service.charAt(0).toUpperCase() + service.slice(1)
+          } в разработке`
+        );
+        setShowModal(true);
     }
   };
 
@@ -995,51 +1019,6 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
               )}
             </div>
           </div>
-
-          {/* VK */}
-          <div className="flex items-center justify-between bg-white rounded-xl p-4 border border-blue-200">
-            <div className="flex items-center gap-3">
-              <img
-                src="https://storage.yandexcloud.net/svm/img/service_icons/vk.png"
-                alt="VK"
-                className="w-8 h-8"
-              />
-              <span className="font-medium text-gray-800">VK</span>
-            </div>
-            <div>
-              {isServiceConnected("vk") ? (
-                <div className="flex items-center text-green-600">
-                  <svg
-                    className="w-6 h-6"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleConnect("vk")}
-                  disabled={vkLoading}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 text-sm flex items-center gap-2"
-                >
-                  {vkLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Подключаем...
-                    </>
-                  ) : (
-                    "Подключить"
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-
         </div>
       </div>
 
@@ -1075,7 +1054,6 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             />
             <span className="text-sm font-medium text-gray-800">Yandex</span>
           </button>
-
         </div>
       </div>
 
