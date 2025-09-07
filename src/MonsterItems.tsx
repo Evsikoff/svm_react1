@@ -39,7 +39,47 @@ interface MonsterItemsProps {
   onRefreshAllFrames: () => Promise<void>;
 }
 
-// ===== Универсальная функция с ретраями =====
+// ===== Функция с бесконечными повторами при таймауте =====
+async function withInfiniteRetryOnTimeout<T>(
+  fn: () => Promise<T>,
+  timeoutMs: number = 4000,
+  label: string
+): Promise<T> {
+  let attemptCount = 0;
+
+  while (true) {
+    attemptCount++;
+    console.log(`${label}: попытка #${attemptCount}`);
+
+    try {
+      // Создаем Promise для таймаута
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Timeout after ${timeoutMs}ms`));
+        }, timeoutMs);
+      });
+
+      // Запускаем функцию и таймаут параллельно
+      const result = await Promise.race([fn(), timeoutPromise]);
+
+      console.log(`${label}: успешно получен ответ с попытки #${attemptCount}`);
+      return result;
+    } catch (error: any) {
+      if (error.message && error.message.includes("Timeout")) {
+        console.warn(
+          `${label}: таймаут на попытке #${attemptCount}, повторяем...`
+        );
+        // Небольшая задержка перед следующей попыткой
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        continue;
+      }
+      // Если это не таймаут, а другая ошибка - пробрасываем её
+      throw error;
+    }
+  }
+}
+
+// ===== Универсальная функция с ретраями для действий (оставляем как была) =====
 async function withRetry<T>(
   fn: () => Promise<T>,
   isValid: (v: T) => boolean,
@@ -77,7 +117,7 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({
   const [actionMessage, setActionMessage] = useState<string>("");
   const [showModal, setShowModal] = useState(false);
 
-  // ===== Загрузка предметов монстров =====
+  // ===== Загрузка предметов монстров с бесконечными повторами =====
   const loadMonsterItems = useCallback(async () => {
     if (!userId) {
       setLoading(false);
@@ -86,16 +126,23 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({
     }
 
     setLoading(true);
+    setError("");
+
     try {
-      const response = await withRetry(
+      const response = await withInfiniteRetryOnTimeout(
         () =>
           axios.post<MonsterItemsResponse>(
             "https://functions.yandexcloud.net/d4ei3ql908qcgv45ikmo",
             { userId }
           ),
-        (r) => r != null && Array.isArray((r as any)?.data?.monsters),
-        "Ошибка при загрузке предметов монстров"
+        4000,
+        "Загрузка предметов монстров"
       );
+
+      // Проверяем валидность ответа
+      if (!response.data || !Array.isArray(response.data.monsters)) {
+        throw new Error("Некорректный формат ответа от сервера");
+      }
 
       const monstersData = response.data.monsters || [];
       setMonsters(monstersData);
@@ -108,6 +155,7 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({
 
       setError("");
     } catch (e: any) {
+      console.error("Критическая ошибка при загрузке предметов монстров:", e);
       setError(e.message || "Ошибка при загрузке предметов монстров");
     } finally {
       setLoading(false);
@@ -421,7 +469,7 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({
                                   </>
                                 )}
 
-                              {/* НОВЫЙ: Глобальный спиннер поверх карточки при выполнении действия */}
+                              {/* Глобальный спиннер поверх карточки при выполнении действия */}
                               {actionLoading &&
                                 item.itemactions.some(
                                   (action) =>
