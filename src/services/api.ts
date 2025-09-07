@@ -11,7 +11,11 @@ import {
   ImpactResponse,
 } from "../types";
 import { API_URLS } from "../constants";
-import { withRetry, invalidateImageCache, getFingerprint } from "../utils";
+import {
+  withInfiniteRetryAndTimeout,
+  invalidateImageCache,
+  getFingerprint,
+} from "../utils";
 
 export class ApiService {
   private onError?: (error: string) => void;
@@ -21,7 +25,7 @@ export class ApiService {
   }
 
   async init(): Promise<InitResponse> {
-    return withRetry(
+    return withInfiniteRetryAndTimeout(
       async () => {
         const fingerprint = getFingerprint();
         const response = await axios.post<InitResponse>(API_URLS.init, {
@@ -29,56 +33,56 @@ export class ApiService {
         });
         return response.data;
       },
-      (d) => !!d && typeof d.userId === "number" && Array.isArray(d.monstersId),
+      5000,
       "Ошибка при инициализации приложения",
       this.onError
     );
   }
 
   async getMainMenu(monstersId: number[]): Promise<MainMenuResponse> {
-    return withRetry(
+    return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.post<MainMenuResponse>(API_URLS.mainmenu, {
           monstersId,
         });
         return response.data;
       },
-      (d) => !!d && Array.isArray(d.menuitems),
+      5000,
       "Ошибка при загрузке главного меню",
       this.onError
     );
   }
 
   async getNotifications(userId: number): Promise<NotificationResponse> {
-    return withRetry(
+    return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.get<NotificationResponse>(
           `${API_URLS.notifications}?userId=${userId}`
         );
         return response.data;
       },
-      (d) => d != null && typeof d.notificationquantity === "number",
+      5000,
       "Ошибка при загрузке уведомлений",
       this.onError
     );
   }
 
   async getMonsters(monstersId: number[]): Promise<MonstersResponse> {
-    return withRetry(
+    return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.post<MonstersResponse>(API_URLS.monsters, {
           monstersId,
         });
         return response.data;
       },
-      (d) => !!d && Array.isArray(d.monsters),
+      5000,
       "Ошибка при загрузке монстров",
       this.onError
     );
   }
 
   async getTeachEnergy(userId: number): Promise<TeachEnergyResponse> {
-    return withRetry(
+    return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.post<TeachEnergyResponse>(
           API_URLS.teachenergy,
@@ -88,7 +92,7 @@ export class ApiService {
         );
         return response.data;
       },
-      (d) => d != null && typeof d.teachenergy === "number",
+      5000,
       "Ошибка при загрузке энергии",
       this.onError
     );
@@ -97,7 +101,7 @@ export class ApiService {
   async getCharacteristics(
     monsterId: number
   ): Promise<MonsterCharacteristicsResponse> {
-    return withRetry(
+    return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.post<MonsterCharacteristicsResponse>(
           API_URLS.characteristics,
@@ -105,14 +109,14 @@ export class ApiService {
         );
         return response.data;
       },
-      (d) => !!d && Array.isArray(d.monstercharacteristics),
+      5000,
       "Ошибка при загрузке характеристик монстра",
       this.onError
     );
   }
 
   async getMonsterRoom(monsterId: number): Promise<MonsterRoomResponse> {
-    return withRetry(
+    return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.post<MonsterRoomResponse>(
           API_URLS.monsterroom,
@@ -133,14 +137,14 @@ export class ApiService {
           })),
         };
       },
-      (d) => !!d && !!d.monsterimage && !!d.roomimage,
+      5000,
       "Ошибка при загрузке изображений монстра и комнаты",
       this.onError
     );
   }
 
   async getImpacts(monsterId: number): Promise<MonsterImpactsResponse> {
-    return withRetry(
+    return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.post<MonsterImpactsResponse>(
           API_URLS.impacts,
@@ -150,27 +154,25 @@ export class ApiService {
         );
         return response.data;
       },
-      (d) => !!d && Array.isArray(d.monsterimpacts),
+      5000,
       "Ошибка при загрузке взаимодействий",
       this.onError
     );
   }
 
-  async executeImpact(
+  async applyImpact(
     monsterId: number,
-    impactId: number,
-    userId: number
+    impactId: number
   ): Promise<ImpactResponse> {
-    return withRetry(
+    return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.post<ImpactResponse>(API_URLS.impact, {
           monsterId,
           impactId,
-          userId,
         });
         return response.data;
       },
-      () => true,
+      5000,
       "Ошибка при выполнении взаимодействия",
       this.onError
     );

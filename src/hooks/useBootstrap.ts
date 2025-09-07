@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ApiService } from "../services/api";
 import { BootTask, BootTaskKey } from "../types";
 import { BOOT_TASKS_ORDER } from "../constants";
+import { withInfiniteRetryAndTimeout } from "../utils";
 
 interface UseBootstrapResult {
   booting: boolean;
@@ -28,8 +29,6 @@ export const useBootstrap = (apiService: ApiService): UseBootstrapResult => {
   const [bootTasks, setBootTasks] = useState<BootTask[]>(
     BOOT_TASKS_ORDER.map((t) => ({ ...t }))
   );
-
-  // Все остальные состояния
   const [userId, setUserId] = useState<number | null>(null);
   const [monstersId, setMonstersId] = useState<number[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -63,16 +62,60 @@ export const useBootstrap = (apiService: ApiService): UseBootstrapResult => {
       try {
         setBooting(true);
 
-        // 1) init
-        const initRes = await apiService.init();
+        // Этап 1: Инициация
+        const initRes = await withInfiniteRetryAndTimeout(
+          () => apiService.init(),
+          5000,
+          "init",
+          (error) => console.error(error)
+        );
         if (cancelled) return;
         setUserId(initRes.userId);
         setMonstersId(initRes.monstersId);
         markTaskDone("init");
 
-        // 2) main menu
-        const mainMenuRes = await apiService.getMainMenu(initRes.monstersId);
+        // Этап 2: Параллельная загрузка
+        const [mainMenuRes, notificationRes, monstersRes, energyRes] =
+          await Promise.all([
+            withInfiniteRetryAndTimeout(
+              () => apiService.getMainMenu(initRes.monstersId),
+              5000,
+              "mainmenu",
+              (error) => console.error(error)
+            ).then((res) => {
+              markTaskDone("mainmenu");
+              return res;
+            }),
+            withInfiniteRetryAndTimeout(
+              () => apiService.getNotifications(initRes.userId),
+              5000,
+              "notifications",
+              (error) => console.error(error)
+            ).then((res) => {
+              markTaskDone("notifications");
+              return res;
+            }),
+            withInfiniteRetryAndTimeout(
+              () => apiService.getMonsters(initRes.monstersId),
+              5000,
+              "monsters",
+              (error) => console.error(error)
+            ).then((res) => {
+              markTaskDone("monsters");
+              return res;
+            }),
+            withInfiniteRetryAndTimeout(
+              () => apiService.getTeachEnergy(initRes.userId),
+              5000,
+              "teachenergy",
+              (error) => console.error(error)
+            ).then((res) => {
+              markTaskDone("teachenergy");
+              return res;
+            }),
+          ]);
         if (cancelled) return;
+
         const items = mainMenuRes.menuitems || [];
         const sortedItems = items.sort(
           (a: any, b: any) => a.sequence - b.sequence
@@ -83,19 +126,9 @@ export const useBootstrap = (apiService: ApiService): UseBootstrapResult => {
           setSelectedMenuItem(def.name);
           setSelectedMenuSequence(def.sequence);
         }
-        markTaskDone("mainmenu");
 
-        // 3) notifications
-        const notificationRes = await apiService.getNotifications(
-          initRes.userId
-        );
-        if (cancelled) return;
         setNotificationCount(notificationRes.notificationquantity);
-        markTaskDone("notifications");
 
-        // 4) monsters
-        const monstersRes = await apiService.getMonsters(initRes.monstersId);
-        if (cancelled) return;
         const sorted = (monstersRes.monsters || []).sort(
           (a: any, b: any) => a.sequence - b.sequence
         );
@@ -108,43 +141,55 @@ export const useBootstrap = (apiService: ApiService): UseBootstrapResult => {
           selectedMonsterLocal = initRes.monstersId[0];
         }
         setSelectedMonsterId(selectedMonsterLocal);
-        markTaskDone("monsters");
 
         if (selectedMonsterLocal == null) {
           throw new Error("Не удалось определить выбранного монстра");
         }
 
-        // 5) teach energy
-        const energyRes = await apiService.getTeachEnergy(initRes.userId);
-        if (cancelled) return;
         setTeachEnergy(energyRes.teachenergy);
         setNextReplenishment(energyRes.nextfreereplenishment);
-        markTaskDone("teachenergy");
 
-        // 6) characteristics
-        const characteristicsRes = await apiService.getCharacteristics(
-          selectedMonsterLocal
-        );
+        // Этап 3: Параллельная загрузка
+        const [characteristicsRes, roomRes, impactsRes] = await Promise.all([
+          withInfiniteRetryAndTimeout(
+            () => apiService.getCharacteristics(selectedMonsterLocal),
+            5000,
+            "characteristics",
+            (error) => console.error(error)
+          ).then((res) => {
+            markTaskDone("characteristics");
+            return res;
+          }),
+          withInfiniteRetryAndTimeout(
+            () => apiService.getMonsterRoom(selectedMonsterLocal),
+            5000,
+            "monsterroom",
+            (error) => console.error(error)
+          ).then((res) => {
+            markTaskDone("monsterroom");
+            return res;
+          }),
+          withInfiniteRetryAndTimeout(
+            () => apiService.getImpacts(selectedMonsterLocal),
+            5000,
+            "impacts",
+            (error) => console.error(error)
+          ).then((res) => {
+            markTaskDone("impacts");
+            return res;
+          }),
+        ]);
         if (cancelled) return;
+
         setCharacteristics(characteristicsRes.monstercharacteristics || []);
-        markTaskDone("characteristics");
-
-        // 7) monster room
-        const roomRes = await apiService.getMonsterRoom(selectedMonsterLocal);
-        if (cancelled) return;
         setMonsterImage(roomRes.monsterimage);
         setRoomImage(roomRes.roomimage);
         setRoomItems(roomRes.roomitems || []);
-        markTaskDone("monsterroom");
-
-        // 8) impacts
-        const impactsRes = await apiService.getImpacts(selectedMonsterLocal);
-        if (cancelled) return;
         setImpacts(impactsRes.monsterimpacts || []);
-        markTaskDone("impacts");
 
         setBooting(false);
-      } catch {
+      } catch (err) {
+        console.error("Bootstrap error:", err);
         setBooting(false);
       }
     };

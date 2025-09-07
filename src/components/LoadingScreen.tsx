@@ -32,11 +32,14 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ bootTasks }) => {
             </div>
           ))}
         </div>
-        <div className="flex justify-between text-xs text-gray-600">
-          {bootTasks.map((t) => (
-            <span key={t.key} className="truncate w-[12%]">
-              {t.label}
-            </span>
+        {/* Вертикальный список задач для мобильных устройств */}
+        <div className="mt-2 space-y-1 text-xs text-gray-600">
+          {bootTasks.map((t, i) => (
+            <div key={t.key} className="flex items-center">
+              <span className="mr-2">{i + 1}.</span>
+              <span className="truncate">{t.label}</span>
+              {t.done && <span className="ml-2">✅</span>}
+            </div>
           ))}
         </div>
       </div>

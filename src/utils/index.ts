@@ -70,65 +70,80 @@ export async function withRetry<T>(
   throw lastErr;
 }
 
-// ===== НОВЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С РАЗМЕРАМИ ИЗОБРАЖЕНИЙ =====
+// Новая функция для бесконечных ретраев с таймаутом
+export async function withInfiniteRetryAndTimeout<T>(
+  fn: () => Promise<T>,
+  timeoutMs: number = 5000,
+  labelForError: string,
+  onError?: (error: string) => void
+): Promise<T> {
+  while (true) {
+    try {
+      const result = await Promise.race([
+        fn(),
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout")), timeoutMs)
+        ),
+      ]);
+      return result;
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : "Unknown error";
+      if (errorMessage === "Timeout") {
+        console.warn(`Timeout for ${labelForError}, retrying...`);
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        continue;
+      }
+      const text = `${labelForError}: ${errorMessage}`;
+      if (onError) {
+        onError(text);
+      }
+      throw new Error(text);
+    }
+  }
+}
 
-/**
- * Получает размеры изображения по URL
- */
+// Функции для работы с размерами изображений
 export const getImageDimensions = (
   imageUrl: string
 ): Promise<{ width: number; height: number }> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
-
     img.onload = () => {
       resolve({
         width: img.naturalWidth,
         height: img.naturalHeight,
       });
     };
-
     img.onerror = () => {
       reject(new Error(`Не удалось загрузить изображение: ${imageUrl}`));
     };
-
     img.src = imageUrl;
   });
 };
 
-/**
- * Получает размеры множества изображений параллельно
- */
 export const getMultipleImageDimensions = async (
   imageUrls: string[]
 ): Promise<Record<string, { width: number; height: number }>> => {
   const results: Record<string, { width: number; height: number }> = {};
-
   const promises = imageUrls.map(async (url) => {
     try {
       const dimensions = await getImageDimensions(url);
       results[url] = dimensions;
     } catch (error) {
       console.warn(`Ошибка получения размеров для ${url}:`, error);
-      // Fallback размеры
       results[url] = { width: 50, height: 50 };
     }
   });
-
   await Promise.all(promises);
   return results;
 };
 
-/**
- * Вычисляет пропорциональные размеры для отображения
- */
 export const calculateDisplaySize = (
   originalWidth: number,
   originalHeight: number,
   maxSize: number = 80
 ): { width: number; height: number; scale: number } => {
   const scale = Math.min(maxSize / originalWidth, maxSize / originalHeight, 1);
-
   return {
     width: Math.round(originalWidth * scale),
     height: Math.round(originalHeight * scale),
