@@ -109,6 +109,9 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
         auto_select: false,
         cancel_on_tap_outside: true,
         context: "use",
+        // Enable FedCM to ensure the Google prompt is displayed even when
+        // third-party cookies are blocked by the browser
+        use_fedcm_for_prompt: true,
       });
       initialized.current = true;
     } catch (error) {
