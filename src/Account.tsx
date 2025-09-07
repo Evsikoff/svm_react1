@@ -256,17 +256,15 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
 
 
           await fetch(
-            "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+            "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
             {
               method: "POST",
               headers: {
-                "Content-Type": "application/json",
+                "Content-Type": "application/json; charset=utf-8",
               },
               body: JSON.stringify({
                 userId,
-
                 newserviceid: String(vkUserId || ""),
-
                 newservicename: fullName,
                 newserviceimage: avatar,
                 service: "vk",
@@ -381,11 +379,11 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
               : `https://avatars.yandex.net/get-yapic/${info.default_avatar_id}/islands-200`;
 
             const response = await fetch(
-              "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+              "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
               {
                 method: "POST",
                 headers: {
-                  "Content-Type": "application/json",
+                  "Content-Type": "application/json; charset=utf-8",
                 },
                 body: JSON.stringify({
                   userId,
@@ -478,12 +476,12 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             ? ""
             : `https://avatars.yandex.net/get-yapic/${info.default_avatar_id}/islands-200`;
 
-          await fetch(
-            "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+          const response = await fetch(
+            "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
             {
               method: "POST",
               headers: {
-                "Content-Type": "application/json",
+                "Content-Type": "application/json; charset=utf-8",
               },
               body: JSON.stringify({
                 userId,
@@ -495,7 +493,12 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
             }
           );
 
-          setModalMessage("Yandex аккаунт успешно подключен");
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+          setModalMessage(result.text || "Yandex аккаунт успешно подключен");
           setShowModal(true);
           await loadUserData();
         } catch (err) {
@@ -548,7 +551,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
 
       // Отправляем данные в Yandex функцию
       const response = await fetch(
-        "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+        "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
         {
           method: "POST",
           headers: {
@@ -759,7 +762,7 @@ const Account: React.FC<AccountProps> = ({ userId }) => {
       };
 
       const response = await fetch(
-        "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+        "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
         {
           method: "POST",
           headers: {

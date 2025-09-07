@@ -268,11 +268,11 @@ const App: React.FC = () => {
             : `https://avatars.yandex.net/get-yapic/${info.default_avatar_id}/islands-200`;
 
           const response = await fetch(
-            "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
+            "https://functions.yandexcloud.net/d4e2nglj1o356on0qq0r",
             {
               method: "POST",
               headers: {
-                "Content-Type": "application/json",
+                "Content-Type": "application/json; charset=utf-8",
               },
               body: JSON.stringify({
                 userId,
