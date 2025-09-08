@@ -14,8 +14,9 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
   const [selectedMonsterId, setSelectedMonsterId] = useState<number | null>(
     null
   );
-  const [currentCompetitionId, setCurrentCompetitionId] =
-    useState<number | null>(null);
+  const [currentCompetitionId, setCurrentCompetitionId] = useState<
+    number | null
+  >(null);
   const [historyEnabled, setHistoryEnabled] = useState(false);
 
   // Обработчик смены монстра из ArenaMonsterSwitcher
@@ -32,7 +33,7 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
 
     const controller = new AbortController();
     fetch(
-      `https://competitionhistoryenable.onrender.com/check?userId=${userId}`,
+      `https://competitionhistoryenable-production.up.railway.app/check?userId=${userId}`,
       { signal: controller.signal }
     )
       .then((res) => res.json())
