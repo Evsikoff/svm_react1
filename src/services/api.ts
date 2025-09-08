@@ -181,6 +181,7 @@ export class ApiService {
   async applyImpact(
     monsterId: number,
     impactId: number,
+    // Идентификатор пользователя обязателен для корректного вызова
     userId: number
   ): Promise<ImpactResponse> {
     // Сбрасываем время последнего запроса энергии при применении воздействия
