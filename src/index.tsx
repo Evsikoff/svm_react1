@@ -285,7 +285,7 @@ const App: React.FC = () => {
         const response = await apiService.applyImpact(
           selectedMonsterId,
           impact.id,
-          userId
+          userId // Передаем идентификатор пользователя согласно API
         );
         setInteractionData(response);
         setShowRaisingInteraction(true);
