@@ -1,3 +1,5 @@
+// Обновленный API сервис в src/services/api.ts
+
 import axios from "axios";
 import {
   InitResponse,
@@ -19,6 +21,7 @@ import {
 
 export class ApiService {
   private onError?: (error: string) => void;
+  private lastEnergyRequest: number = 0;
 
   constructor(onError?: (error: string) => void) {
     this.onError = onError;
@@ -35,7 +38,8 @@ export class ApiService {
       },
       5000,
       "Ошибка при инициализации приложения",
-      this.onError
+      this.onError,
+      false // Отключаем кеширование для init
     );
   }
 
@@ -81,7 +85,20 @@ export class ApiService {
     );
   }
 
-  async getTeachEnergy(userId: number): Promise<TeachEnergyResponse> {
+  async getTeachEnergy(
+    userId: number,
+    forceRefresh: boolean = false
+  ): Promise<TeachEnergyResponse> {
+    // Предотвращаем частые запросы энергии
+    const now = Date.now();
+    if (!forceRefresh && now - this.lastEnergyRequest < 15000) {
+      console.log("Пропускаем запрос энергии - слишком рано");
+      // Возвращаем Promise, который никогда не разрешится, чтобы не нарушить цепочку
+      return new Promise(() => {});
+    }
+
+    this.lastEnergyRequest = now;
+
     return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.post<TeachEnergyResponse>(
@@ -94,7 +111,8 @@ export class ApiService {
       },
       5000,
       "Ошибка при загрузке энергии",
-      this.onError
+      this.onError,
+      false // Отключаем кеширование для энергии
     );
   }
 
@@ -164,6 +182,9 @@ export class ApiService {
     monsterId: number,
     impactId: number
   ): Promise<ImpactResponse> {
+    // Сбрасываем время последнего запроса энергии при применении воздействия
+    this.lastEnergyRequest = 0;
+
     return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.post<ImpactResponse>(API_URLS.impact, {
@@ -174,7 +195,8 @@ export class ApiService {
       },
       5000,
       "Ошибка при выполнении взаимодействия",
-      this.onError
+      this.onError,
+      false // Отключаем кеширование для воздействий
     );
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -79,6 +79,10 @@ const App: React.FC = () => {
     BOOT_TASKS_ORDER.map((t) => ({ ...t }))
   );
 
+  // --- Новые состояния для оптимизации ---
+  const [isLoadingEnergy, setIsLoadingEnergy] = useState<boolean>(false);
+  const [lastEnergyUpdate, setLastEnergyUpdate] = useState<number>(0);
+
   // Создаем экземпляр API сервиса
   const apiService = new ApiService((error) => setError(error));
 
@@ -92,6 +96,170 @@ const App: React.FC = () => {
       prev.map((t) => (t.key === key ? { ...t, done: true } : t))
     );
   };
+
+  // --- Оптимизированные вспомогательные функции для загрузки данных ---
+  const loadTeachEnergy = useCallback(
+    async (forceUpdate: boolean = false) => {
+      if (isLoadingEnergy || !userId) return;
+
+      // Предотвращаем частые обновления (не чаще раза в 30 секунд)
+      const now = Date.now();
+      if (!forceUpdate && now - lastEnergyUpdate < 30000) {
+        return;
+      }
+
+      setIsLoadingEnergy(true);
+      try {
+        const energyRes = await apiService.getTeachEnergy(userId, forceUpdate);
+        setTeachEnergy(energyRes.teachenergy);
+        setNextReplenishment(energyRes.nextfreereplenishment);
+        setLastEnergyUpdate(now);
+      } catch (error) {
+        console.error("Ошибка загрузки энергии:", error);
+      } finally {
+        setIsLoadingEnergy(false);
+      }
+    },
+    [userId, isLoadingEnergy, lastEnergyUpdate, apiService]
+  );
+
+  const loadCharacteristics = useCallback(async () => {
+    if (!selectedMonsterId) return;
+    const characteristicsRes = await apiService.getCharacteristics(
+      selectedMonsterId
+    );
+    setCharacteristics(characteristicsRes.monstercharacteristics || []);
+  }, [selectedMonsterId, apiService]);
+
+  const loadMonsterRoom = useCallback(async () => {
+    if (!selectedMonsterId) return;
+    const roomRes = await apiService.getMonsterRoom(selectedMonsterId);
+    setMonsterImage(roomRes.monsterimage);
+    setRoomImage(roomRes.roomimage);
+    setRoomItems(roomRes.roomitems || []);
+  }, [selectedMonsterId, apiService]);
+
+  const loadImpacts = useCallback(async () => {
+    if (!selectedMonsterId) return;
+    const impactsRes = await apiService.getImpacts(selectedMonsterId);
+    setImpacts(impactsRes.monsterimpacts || []);
+  }, [selectedMonsterId, apiService]);
+
+  const loadMonsters = useCallback(async () => {
+    if (!monstersId.length) return;
+    const monstersRes = await apiService.getMonsters(monstersId);
+    const sorted = (monstersRes.monsters || []).sort(
+      (a, b) => a.sequence - b.sequence
+    );
+    setMonsters(sorted);
+  }, [monstersId, apiService]);
+
+  const loadMainMenu = useCallback(async () => {
+    if (!monstersId.length) return;
+    const mainMenuRes = await apiService.getMainMenu(monstersId);
+    const items = mainMenuRes.menuitems || [];
+    const sortedItems = items.sort((a, b) => a.sequence - b.sequence);
+    setMenuItems(sortedItems);
+  }, [monstersId, apiService]);
+
+  // --- Оптимизированный обработчик клика по пунктам главного меню ---
+  const handleMenuClick = useCallback(
+    async (item: MenuItem) => {
+      setSelectedMenuItem(item.name);
+      setSelectedMenuSequence(item.sequence);
+
+      if (item.sequence === MENU_SEQUENCES.RAISING) {
+        // Показ/обновление раздела "Воспитание"
+        setShowRaisingInteraction(false);
+        setIsLoading(true);
+        try {
+          // Загружаем энергию только если прошло больше 30 секунд с последней загрузки
+          await Promise.all([
+            loadTeachEnergy(),
+            loadCharacteristics(),
+            loadMonsterRoom(),
+            loadImpacts(),
+            loadMonsters(),
+          ]);
+        } catch {
+          setError("Ошибка при обновлении данных");
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    },
+    [
+      loadTeachEnergy,
+      loadCharacteristics,
+      loadMonsterRoom,
+      loadImpacts,
+      loadMonsters,
+    ]
+  );
+
+  // --- обработчик переключения монстра ---
+  const handleMonsterSwitch = useCallback(
+    (newMonsterId: number) => {
+      if (newMonsterId === selectedMonsterId) return;
+
+      // Сбрасываем старые данные изображений
+      setMonsterImage("");
+      setRoomImage("");
+      setRoomItems([]);
+
+      setSelectedMonsterId(newMonsterId);
+    },
+    [selectedMonsterId]
+  );
+
+  // --- Оптимизированный обработчик клика по воздействию ---
+  const handleImpactClick = useCallback(
+    async (impact: MonsterImpact) => {
+      if (
+        !impact.available ||
+        teachEnergy < impact.energyprice ||
+        !selectedMonsterId
+      )
+        return;
+
+      setIsLoading(true);
+      try {
+        const response = await apiService.applyImpact(
+          selectedMonsterId,
+          impact.id
+        );
+        setInteractionData(response);
+        setShowRaisingInteraction(true);
+
+        // После воздействия принудительно обновляем энергию
+        await Promise.all([
+          loadTeachEnergy(true), // Принудительно обновляем энергию
+          loadCharacteristics(),
+          loadMonsterRoom(),
+          loadImpacts(),
+          loadMonsters(),
+          loadMainMenu(),
+        ]);
+      } catch {
+        setError("Ошибка при обновлении данных");
+      } finally {
+        setIsLoading(false);
+        setShowRaisingInteraction(false);
+        setInteractionData(null);
+      }
+    },
+    [
+      teachEnergy,
+      selectedMonsterId,
+      apiService,
+      loadTeachEnergy,
+      loadCharacteristics,
+      loadMonsterRoom,
+      loadImpacts,
+      loadMonsters,
+      loadMainMenu,
+    ]
+  );
 
   // ---- Bootstrap первоначальной загрузки приложения ----
   useEffect(() => {
@@ -185,8 +353,10 @@ const App: React.FC = () => {
           throw new Error("Не удалось определить выбранного монстра");
         }
 
+        // Устанавливаем энергию только один раз при загрузке
         setTeachEnergy(energyRes.teachenergy);
         setNextReplenishment(energyRes.nextfreereplenishment);
+        setLastEnergyUpdate(Date.now()); // Отмечаем время последнего обновления
 
         // Этап 3: Параллельная загрузка характеристик, комнаты и воздействий
         const [characteristicsRes, roomRes, impactsRes] = await Promise.all([
@@ -239,119 +409,7 @@ const App: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  // --- обработчик клика по пунктам главного меню ---
-  const handleMenuClick = async (item: MenuItem) => {
-    setSelectedMenuItem(item.name);
-    setSelectedMenuSequence(item.sequence);
-
-    if (item.sequence === MENU_SEQUENCES.RAISING) {
-      // Показ/обновление раздела "Воспитание"
-      setShowRaisingInteraction(false);
-      setIsLoading(true);
-      try {
-        await Promise.all([
-          loadTeachEnergy(),
-          loadCharacteristics(),
-          loadMonsterRoom(),
-          loadImpacts(),
-          loadMonsters(),
-        ]);
-      } catch {
-        setError("Ошибка при обновлении данных");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  // --- обработчик переключения монстра ---
-  const handleMonsterSwitch = (newMonsterId: number) => {
-    if (newMonsterId === selectedMonsterId) return;
-
-    // Сбрасываем старые данные изображений
-    setMonsterImage("");
-    setRoomImage("");
-    setRoomItems([]);
-
-    setSelectedMonsterId(newMonsterId);
-  };
-
-  // --- обработчик клика по воздействию ---
-  const handleImpactClick = async (impact: MonsterImpact) => {
-    if (
-      !impact.available ||
-      teachEnergy < impact.energyprice ||
-      !selectedMonsterId
-    )
-      return;
-
-    setIsLoading(true);
-    try {
-      const response = await apiService.applyImpact(
-        selectedMonsterId,
-        impact.id
-      );
-      setInteractionData(response);
-      setShowRaisingInteraction(true);
-      await Promise.all([
-        loadTeachEnergy(),
-        loadCharacteristics(),
-        loadMonsterRoom(),
-        loadImpacts(),
-        loadMonsters(),
-        loadMainMenu(),
-      ]);
-    } catch {
-      setError("Ошибка при обновлении данных");
-    } finally {
-      setIsLoading(false);
-      setShowRaisingInteraction(false);
-      setInteractionData(null);
-    }
-  };
-
-  // --- вспомогательные функции для загрузки данных ---
-  const loadTeachEnergy = async () => {
-    const energyRes = await apiService.getTeachEnergy(userId!);
-    setTeachEnergy(energyRes.teachenergy);
-    setNextReplenishment(energyRes.nextfreereplenishment);
-  };
-
-  const loadCharacteristics = async () => {
-    const characteristicsRes = await apiService.getCharacteristics(
-      selectedMonsterId!
-    );
-    setCharacteristics(characteristicsRes.monstercharacteristics || []);
-  };
-
-  const loadMonsterRoom = async () => {
-    const roomRes = await apiService.getMonsterRoom(selectedMonsterId!);
-    setMonsterImage(roomRes.monsterimage);
-    setRoomImage(roomRes.roomimage);
-    setRoomItems(roomRes.roomitems || []);
-  };
-
-  const loadImpacts = async () => {
-    const impactsRes = await apiService.getImpacts(selectedMonsterId!);
-    setImpacts(impactsRes.monsterimpacts || []);
-  };
-
-  const loadMonsters = async () => {
-    const monstersRes = await apiService.getMonsters(monstersId);
-    const sorted = (monstersRes.monsters || []).sort(
-      (a, b) => a.sequence - b.sequence
-    );
-    setMonsters(sorted);
-  };
-
-  const loadMainMenu = async () => {
-    const mainMenuRes = await apiService.getMainMenu(monstersId);
-    const items = mainMenuRes.menuitems || [];
-    const sortedItems = items.sort((a, b) => a.sequence - b.sequence);
-    setMenuItems(sortedItems);
-  };
+  }, []); // Убираем лишние зависимости
 
   // Обработка возврата с авторизации Yandex
   useEffect(() => {
@@ -490,9 +548,9 @@ const App: React.FC = () => {
     loadDimensions();
   }, [roomItems]);
 
-  // Таймер пополнения энергии
+  // Оптимизированный таймер пополнения энергии
   useEffect(() => {
-    if (booting) return;
+    if (booting || !nextReplenishment) return;
 
     const updateTimer = () => {
       const replenishDate = new Date(nextReplenishment);
@@ -503,15 +561,16 @@ const App: React.FC = () => {
       );
       setTimer(diff);
 
-      if (diff === 0) {
-        loadTeachEnergy();
+      // Обновляем энергию только когда таймер достиг нуля И прошло время с последнего обновления
+      if (diff === 0 && Date.now() - lastEnergyUpdate > 30000) {
+        loadTeachEnergy(true);
       }
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [booting, nextReplenishment]);
+  }, [booting, nextReplenishment, lastEnergyUpdate, loadTeachEnergy]);
 
   // --- UI ---
   return (

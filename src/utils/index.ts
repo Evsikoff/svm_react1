@@ -1,13 +1,104 @@
-// src/utils/index.ts
+// Обновленные утилиты в src/utils/index.ts
 
-// Функция для сброса кеша изображений
+// Кеш для предотвращения дублированных запросов
+const requestCache = new Map<
+  string,
+  { promise: Promise<any>; timestamp: number }
+>();
+const CACHE_TTL = 10000; // 10 секунд
+
+// Функция для очистки устаревших записей в кеше
+const cleanCache = () => {
+  const now = Date.now();
+  for (const [key, value] of requestCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      requestCache.delete(key);
+    }
+  }
+};
+
+// Новая функция для бесконечных ретраев с кешированием
+export async function withInfiniteRetryAndTimeout<T>(
+  fn: () => Promise<T>,
+  timeoutMs: number = 5000,
+  labelForError: string,
+  onError?: (error: string) => void,
+  enableCache: boolean = true
+): Promise<T> {
+  // Очищаем устаревший кеш
+  cleanCache();
+
+  // Создаем ключ для кеширования на основе функции и метки
+  const cacheKey = enableCache
+    ? `${labelForError}_${fn.toString().slice(0, 100)}`
+    : null;
+
+  // Проверяем кеш
+  if (cacheKey && requestCache.has(cacheKey)) {
+    const cached = requestCache.get(cacheKey)!;
+    const age = Date.now() - cached.timestamp;
+
+    // Если запрос свежий (младше 5 секунд), возвращаем его
+    if (age < 5000) {
+      try {
+        return await cached.promise;
+      } catch (error) {
+        // Если кешированный запрос упал, удаляем его из кеша
+        requestCache.delete(cacheKey);
+      }
+    } else {
+      // Удаляем устаревший запрос
+      requestCache.delete(cacheKey);
+    }
+  }
+
+  // Создаем новый запрос
+  const executeRequest = async (): Promise<T> => {
+    while (true) {
+      try {
+        const result = await Promise.race([
+          fn(),
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error("Timeout")), timeoutMs)
+          ),
+        ]);
+        return result;
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : "Unknown error";
+        if (errorMessage === "Timeout") {
+          console.warn(`Timeout for ${labelForError}, retrying...`);
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          continue;
+        }
+        const text = `${labelForError}: ${errorMessage}`;
+        if (onError) {
+          onError(text);
+        }
+        throw new Error(text);
+      }
+    }
+  };
+
+  const requestPromise = executeRequest();
+
+  // Сохраняем в кеш только если кеширование включено
+  if (cacheKey) {
+    requestCache.set(cacheKey, {
+      promise: requestPromise,
+      timestamp: Date.now(),
+    });
+  }
+
+  return requestPromise;
+}
+
+// Остальные функции остаются без изменений
 export const invalidateImageCache = (url: string): string => {
   const timestamp = Date.now();
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}t=${timestamp}`;
 };
 
-// Простая генерация отпечатка браузера
 export const getFingerprint = (): string => {
   const components = [
     navigator.userAgent,
@@ -22,7 +113,6 @@ export const getFingerprint = (): string => {
   return btoa(components.join("|"));
 };
 
-// Форматирование таймера
 export const formatTimer = (timeInSeconds: number): string => {
   const hours = Math.floor(timeInSeconds / 3600);
   const minutes = Math.floor((timeInSeconds % 3600) / 60);
@@ -34,7 +124,6 @@ export const formatTimer = (timeInSeconds: number): string => {
   return parts.join(" ");
 };
 
-// Универсальная обёртка с повторами
 export async function withRetry<T>(
   fn: () => Promise<T>,
   isValid: (v: T) => boolean,
@@ -70,39 +159,6 @@ export async function withRetry<T>(
   throw lastErr;
 }
 
-// Новая функция для бесконечных ретраев с таймаутом
-export async function withInfiniteRetryAndTimeout<T>(
-  fn: () => Promise<T>,
-  timeoutMs: number = 5000,
-  labelForError: string,
-  onError?: (error: string) => void
-): Promise<T> {
-  while (true) {
-    try {
-      const result = await Promise.race([
-        fn(),
-        new Promise<T>((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout")), timeoutMs)
-        ),
-      ]);
-      return result;
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : "Unknown error";
-      if (errorMessage === "Timeout") {
-        console.warn(`Timeout for ${labelForError}, retrying...`);
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        continue;
-      }
-      const text = `${labelForError}: ${errorMessage}`;
-      if (onError) {
-        onError(text);
-      }
-      throw new Error(text);
-    }
-  }
-}
-
-// Функции для работы с размерами изображений
 export const getImageDimensions = (
   imageUrl: string
 ): Promise<{ width: number; height: number }> => {
