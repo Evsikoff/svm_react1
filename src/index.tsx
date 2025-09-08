@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -53,6 +53,7 @@ const App: React.FC = () => {
   const [selectedMonsterId, setSelectedMonsterId] = useState<number | null>(
     null
   );
+  const selectedMonsterIdRef = useRef<number | null>(null);
   const [teachEnergy, setTeachEnergy] = useState<number>(0);
   const [nextReplenishment, setNextReplenishment] = useState<string>("");
   const [timer, setTimer] = useState<number>(0);
@@ -123,36 +124,48 @@ const App: React.FC = () => {
     [userId, isLoadingEnergy, lastEnergyUpdate, apiService]
   );
 
+
+  useEffect(() => {
+    selectedMonsterIdRef.current = selectedMonsterId;
+  }, [selectedMonsterId]);
+
   const loadCharacteristics = useCallback(
     async (monsterId?: number) => {
-      const id = monsterId ?? selectedMonsterId;
+      const id = monsterId ?? selectedMonsterIdRef.current;
       if (!id) return;
       const characteristicsRes = await apiService.getCharacteristics(id);
+      if (id !== selectedMonsterIdRef.current) return;
       setCharacteristics(characteristicsRes.monstercharacteristics || []);
     },
-    [selectedMonsterId, apiService]
+    [apiService]
+
   );
 
   const loadMonsterRoom = useCallback(
     async (monsterId?: number) => {
-      const id = monsterId ?? selectedMonsterId;
+      const id = monsterId ?? selectedMonsterIdRef.current;
       if (!id) return;
       const roomRes = await apiService.getMonsterRoom(id);
+      if (id !== selectedMonsterIdRef.current) return;
+
       setMonsterImage(roomRes.monsterimage);
       setRoomImage(roomRes.roomimage);
       setRoomItems(roomRes.roomitems || []);
     },
-    [selectedMonsterId, apiService]
+    [apiService]
+
   );
 
   const loadImpacts = useCallback(
     async (monsterId?: number) => {
-      const id = monsterId ?? selectedMonsterId;
+      const id = monsterId ?? selectedMonsterIdRef.current;
       if (!id) return;
       const impactsRes = await apiService.getImpacts(id);
+      if (id !== selectedMonsterIdRef.current) return;
       setImpacts(impactsRes.monsterimpacts || []);
     },
-    [selectedMonsterId, apiService]
+    [apiService]
+
   );
 
   const loadMonsters = useCallback(async () => {
@@ -239,6 +252,22 @@ const App: React.FC = () => {
       loadImpacts,
     ]
   );
+
+  // --- загрузка данных при изменении монстра ---
+  useEffect(() => {
+    if (!selectedMonsterId) return;
+    const currentId = selectedMonsterId;
+    setIsMonsterLoading(true);
+    Promise.all([
+      loadCharacteristics(currentId),
+      loadMonsterRoom(currentId),
+      loadImpacts(currentId),
+    ])
+      .catch(() => setError("Ошибка при обновлении данных"))
+      .finally(() => {
+        if (currentId === selectedMonsterId) setIsMonsterLoading(false);
+      });
+  }, [selectedMonsterId, loadCharacteristics, loadMonsterRoom, loadImpacts]);
 
   // --- Оптимизированный обработчик клика по воздействию ---
   const handleImpactClick = useCallback(
