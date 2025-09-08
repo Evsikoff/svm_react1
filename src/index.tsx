@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -39,6 +39,9 @@ import { ApiService } from "./services/api";
 // Утилиты
 import { formatTimer, withInfiniteRetryAndTimeout } from "./utils";
 
+const YANDEX_CLIENT_ID = "3d7ec2c7ceb34ed59b445d7fb152ac9f";
+const YANDEX_CLIENT_SECRET = "1d85ca9e132b4e419c960c38832f8d71";
+
 const App: React.FC = () => {
   // ---- state ----
   const [userId, setUserId] = useState<number | null>(null);
@@ -49,14 +52,16 @@ const App: React.FC = () => {
     number | null
   >(null);
   const [notificationCount, setNotificationCount] = useState<number>(0);
+
   const [monsters, setMonsters] = useState<Monster[]>([]);
   const [selectedMonsterId, setSelectedMonsterId] = useState<number | null>(
     null
   );
-  const selectedMonsterIdRef = useRef<number | null>(null);
+
   const [teachEnergy, setTeachEnergy] = useState<number>(0);
   const [nextReplenishment, setNextReplenishment] = useState<string>("");
   const [timer, setTimer] = useState<number>(0);
+
   const [characteristics, setCharacteristics] = useState<
     MonsterCharacteristic[]
   >([]);
@@ -65,13 +70,16 @@ const App: React.FC = () => {
   const [isMonsterLoading, setIsMonsterLoading] = useState<boolean>(false);
   const [roomImage, setRoomImage] = useState<string>("");
   const [roomItems, setRoomItems] = useState<RoomItem[]>([]);
+
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+
   const [showRaisingInteraction, setShowRaisingInteraction] =
     useState<boolean>(false);
   const [interactionData, setInteractionData] = useState<ImpactResponse | null>(
     null
   );
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // --- состояние экрана загрузки ---
@@ -80,16 +88,15 @@ const App: React.FC = () => {
     BOOT_TASKS_ORDER.map((t) => ({ ...t }))
   );
 
-  // --- Новые состояния для оптимизации ---
+  // --- состояния для оптимизации энергии ---
   const [isLoadingEnergy, setIsLoadingEnergy] = useState<boolean>(false);
   const [lastEnergyUpdate, setLastEnergyUpdate] = useState<number>(0);
 
-  // Создаем экземпляр API сервиса
-  const apiService = new ApiService((error) => setError(error));
-
-  // Константы OAuth Yandex
-  const YANDEX_CLIENT_ID = "3d7ec2c7ceb34ed59b445d7fb152ac9f";
-  const YANDEX_CLIENT_SECRET = "1d85ca9e132b4e419c960c38832f8d71";
+  // Api: СТАБИЛЬНЫЙ экземпляр на весь жизненный цикл компонента
+  const apiService = useMemo(
+    () => new ApiService((err: string) => setError(err)),
+    []
+  );
 
   // --- отметка выполненной задачи на прогресс-баре ---
   const markTaskDone = (key: BootTaskKey) => {
@@ -98,16 +105,15 @@ const App: React.FC = () => {
     );
   };
 
-  // --- Оптимизированные вспомогательные функции для загрузки данных ---
+  // --- загрузчики данных (без параметров, используют selectedMonsterId) ---
+
   const loadTeachEnergy = useCallback(
     async (forceUpdate: boolean = false) => {
-      if (isLoadingEnergy || !userId) return;
+      if (!userId) return;
+      if (isLoadingEnergy) return;
 
-      // Предотвращаем частые обновления (не чаще раза в 30 секунд)
       const now = Date.now();
-      if (!forceUpdate && now - lastEnergyUpdate < 30000) {
-        return;
-      }
+      if (!forceUpdate && now - lastEnergyUpdate < 30000) return;
 
       setIsLoadingEnergy(true);
       try {
@@ -115,8 +121,8 @@ const App: React.FC = () => {
         setTeachEnergy(energyRes.teachenergy);
         setNextReplenishment(energyRes.nextfreereplenishment);
         setLastEnergyUpdate(now);
-      } catch (error) {
-        console.error("Ошибка загрузки энергии:", error);
+      } catch (e) {
+        console.error("Ошибка загрузки энергии:", e);
       } finally {
         setIsLoadingEnergy(false);
       }
@@ -124,49 +130,27 @@ const App: React.FC = () => {
     [userId, isLoadingEnergy, lastEnergyUpdate, apiService]
   );
 
+  const loadCharacteristics = useCallback(async () => {
+    if (!selectedMonsterId) return;
+    const characteristicsRes = await apiService.getCharacteristics(
+      selectedMonsterId
+    );
+    setCharacteristics(characteristicsRes.monstercharacteristics || []);
+  }, [selectedMonsterId, apiService]);
 
-  useEffect(() => {
-    selectedMonsterIdRef.current = selectedMonsterId;
-  }, [selectedMonsterId]);
+  const loadMonsterRoom = useCallback(async () => {
+    if (!selectedMonsterId) return;
+    const roomRes = await apiService.getMonsterRoom(selectedMonsterId);
+    setMonsterImage(roomRes.monsterimage);
+    setRoomImage(roomRes.roomimage);
+    setRoomItems(roomRes.roomitems || []);
+  }, [selectedMonsterId, apiService]);
 
-  const loadCharacteristics = useCallback(
-    async (monsterId?: number) => {
-      const id = monsterId ?? selectedMonsterIdRef.current;
-      if (!id) return;
-      const characteristicsRes = await apiService.getCharacteristics(id);
-      if (id !== selectedMonsterIdRef.current) return;
-      setCharacteristics(characteristicsRes.monstercharacteristics || []);
-    },
-    [apiService]
-
-  );
-
-  const loadMonsterRoom = useCallback(
-    async (monsterId?: number) => {
-      const id = monsterId ?? selectedMonsterIdRef.current;
-      if (!id) return;
-      const roomRes = await apiService.getMonsterRoom(id);
-      if (id !== selectedMonsterIdRef.current) return;
-
-      setMonsterImage(roomRes.monsterimage);
-      setRoomImage(roomRes.roomimage);
-      setRoomItems(roomRes.roomitems || []);
-    },
-    [apiService]
-
-  );
-
-  const loadImpacts = useCallback(
-    async (monsterId?: number) => {
-      const id = monsterId ?? selectedMonsterIdRef.current;
-      if (!id) return;
-      const impactsRes = await apiService.getImpacts(id);
-      if (id !== selectedMonsterIdRef.current) return;
-      setImpacts(impactsRes.monsterimpacts || []);
-    },
-    [apiService]
-
-  );
+  const loadImpacts = useCallback(async () => {
+    if (!selectedMonsterId) return;
+    const impactsRes = await apiService.getImpacts(selectedMonsterId);
+    setImpacts(impactsRes.monsterimpacts || []);
+  }, [selectedMonsterId, apiService]);
 
   const loadMonsters = useCallback(async () => {
     if (!monstersId.length) return;
@@ -185,25 +169,18 @@ const App: React.FC = () => {
     setMenuItems(sortedItems);
   }, [monstersId, apiService]);
 
-  // --- Оптимизированный обработчик клика по пунктам главного меню ---
+  // --- обработчик клика по пунктам главного меню ---
   const handleMenuClick = useCallback(
     async (item: MenuItem) => {
       setSelectedMenuItem(item.name);
       setSelectedMenuSequence(item.sequence);
 
       if (item.sequence === MENU_SEQUENCES.RAISING) {
-        // Показ/обновление раздела "Воспитание"
         setShowRaisingInteraction(false);
         setIsLoading(true);
         try {
-          // Загружаем энергию только если прошло больше 30 секунд с последней загрузки
-          await Promise.all([
-            loadTeachEnergy(),
-            loadCharacteristics(),
-            loadMonsterRoom(),
-            loadImpacts(),
-            loadMonsters(),
-          ]);
+          // Обновляем только то, что не дублирует пакетную загрузку монстра
+          await Promise.all([loadTeachEnergy(), loadMonsters()]);
         } catch {
           setError("Ошибка при обновлении данных");
         } finally {
@@ -211,113 +188,44 @@ const App: React.FC = () => {
         }
       }
     },
-    [
-      loadTeachEnergy,
-      loadCharacteristics,
-      loadMonsterRoom,
-      loadImpacts,
-      loadMonsters,
-    ]
+    [loadTeachEnergy, loadMonsters]
   );
 
   // --- обработчик переключения монстра ---
   const handleMonsterSwitch = useCallback(
-    async (newMonsterId: number) => {
+    (newMonsterId: number) => {
       if (newMonsterId === selectedMonsterId || isMonsterLoading) return;
 
-      // Сбрасываем старые данные изображений
+      // Сбрасываем визуал
       setMonsterImage("");
       setRoomImage("");
       setRoomItems([]);
 
-      setIsMonsterLoading(true);
+      // Только меняем выбранного монстра — эффект ниже загрузит пакет
       setSelectedMonsterId(newMonsterId);
-
-      try {
-        await Promise.all([
-          loadCharacteristics(newMonsterId),
-          loadMonsterRoom(newMonsterId),
-          loadImpacts(newMonsterId),
-        ]);
-      } catch {
-        setError("Ошибка при обновлении данных");
-      } finally {
-        setIsMonsterLoading(false);
-      }
     },
-    [
-      selectedMonsterId,
-      loadCharacteristics,
-      loadMonsterRoom,
-      loadImpacts,
-    ]
+    [selectedMonsterId, isMonsterLoading]
   );
 
-  // --- загрузка данных при изменении монстра ---
+  // --- единая точка загрузки “пакета монстра”: характеристики + комната + воздействия ---
   useEffect(() => {
     if (!selectedMonsterId) return;
-    const currentId = selectedMonsterId;
+
+    let cancelled = false;
     setIsMonsterLoading(true);
-    Promise.all([
-      loadCharacteristics(currentId),
-      loadMonsterRoom(currentId),
-      loadImpacts(currentId),
-    ])
-      .catch(() => setError("Ошибка при обновлении данных"))
+
+    Promise.all([loadCharacteristics(), loadMonsterRoom(), loadImpacts()])
+      .catch(() => {
+        if (!cancelled) setError("Ошибка при обновлении данных");
+      })
       .finally(() => {
-        if (currentId === selectedMonsterId) setIsMonsterLoading(false);
+        if (!cancelled) setIsMonsterLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedMonsterId, loadCharacteristics, loadMonsterRoom, loadImpacts]);
-
-  // --- Оптимизированный обработчик клика по воздействию ---
-  const handleImpactClick = useCallback(
-    async (impact: MonsterImpact) => {
-      if (
-        !impact.available ||
-        teachEnergy < impact.energyprice ||
-        !selectedMonsterId ||
-        !userId
-      )
-        return;
-
-      setIsLoading(true);
-      try {
-        const response = await apiService.applyImpact(
-          selectedMonsterId,
-          impact.id,
-          userId // Передаем идентификатор пользователя согласно API
-        );
-        setInteractionData(response);
-        setShowRaisingInteraction(true);
-
-        // После воздействия принудительно обновляем энергию
-        await Promise.all([
-          loadTeachEnergy(true), // Принудительно обновляем энергию
-          loadCharacteristics(),
-          loadMonsterRoom(),
-          loadImpacts(),
-          loadMonsters(),
-          loadMainMenu(),
-        ]);
-      } catch {
-        setError("Ошибка при обновлении данных");
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [
-      teachEnergy,
-      selectedMonsterId,
-      apiService,
-      loadTeachEnergy,
-      loadCharacteristics,
-      loadMonsterRoom,
-      loadImpacts,
-      loadMonsters,
-      loadMainMenu,
-      userId,
-    ]
-  );
 
   // ---- Bootstrap первоначальной загрузки приложения ----
   useEffect(() => {
@@ -328,7 +236,7 @@ const App: React.FC = () => {
         setBooting(true);
         setError("");
 
-        // Этап 1: Инициация
+        // 1) init
         const initRes = await withInfiniteRetryAndTimeout(
           () => apiService.init(),
           5000,
@@ -340,7 +248,7 @@ const App: React.FC = () => {
         setMonstersId(initRes.monstersId);
         markTaskDone("init");
 
-        // Этап 2: Параллельная загрузка главного меню, уведомлений, монстров и энергии
+        // 2) Параллельно тянем главное меню, уведомления, монстров и энергию
         const [mainMenuRes, notificationRes, monstersRes, energyRes] =
           await Promise.all([
             withInfiniteRetryAndTimeout(
@@ -382,7 +290,7 @@ const App: React.FC = () => {
           ]);
         if (cancelled) return;
 
-        // Обработка результатов этапа 2
+        // Меню
         const items = mainMenuRes.menuitems || [];
         const sortedItems = items.sort((a, b) => a.sequence - b.sequence);
         setMenuItems(sortedItems);
@@ -392,12 +300,16 @@ const App: React.FC = () => {
           setSelectedMenuSequence(def.sequence);
         }
 
+        // Уведомления
         setNotificationCount(notificationRes.notificationquantity);
 
+        // Монстры
         const sorted = (monstersRes.monsters || []).sort(
           (a, b) => a.sequence - b.sequence
         );
         setMonsters(sorted);
+
+        // Выбор монстра
         const defaultMonster = sorted.find((m) => m.index);
         let selectedMonsterLocal: number | null = null;
         if (defaultMonster) {
@@ -406,54 +318,16 @@ const App: React.FC = () => {
           selectedMonsterLocal = (sorted[0] as any).monsterId;
         }
         setSelectedMonsterId(selectedMonsterLocal);
-
         if (selectedMonsterLocal == null) {
           throw new Error("Не удалось определить выбранного монстра");
         }
 
-        // Устанавливаем энергию только один раз при загрузке
+        // Энергия (фиксируем время последнего обновления)
         setTeachEnergy(energyRes.teachenergy);
         setNextReplenishment(energyRes.nextfreereplenishment);
-        setLastEnergyUpdate(Date.now()); // Отмечаем время последнего обновления
+        setLastEnergyUpdate(Date.now());
 
-        // Этап 3: Параллельная загрузка характеристик, комнаты и воздействий
-        const [characteristicsRes, roomRes, impactsRes] = await Promise.all([
-          withInfiniteRetryAndTimeout(
-            () => apiService.getCharacteristics(selectedMonsterLocal),
-            5000,
-            "characteristics",
-            setError
-          ).then((res) => {
-            markTaskDone("characteristics");
-            return res;
-          }),
-          withInfiniteRetryAndTimeout(
-            () => apiService.getMonsterRoom(selectedMonsterLocal),
-            5000,
-            "monsterroom",
-            setError
-          ).then((res) => {
-            markTaskDone("monsterroom");
-            return res;
-          }),
-          withInfiniteRetryAndTimeout(
-            () => apiService.getImpacts(selectedMonsterLocal),
-            5000,
-            "impacts",
-            setError
-          ).then((res) => {
-            markTaskDone("impacts");
-            return res;
-          }),
-        ]);
-        if (cancelled) return;
-
-        setCharacteristics(characteristicsRes.monstercharacteristics || []);
-        setMonsterImage(roomRes.monsterimage);
-        setRoomImage(roomRes.roomimage);
-        setRoomItems(roomRes.roomitems || []);
-        setImpacts(impactsRes.monsterimpacts || []);
-
+        // Важно: не грузим характер/комнату/воздействия здесь — это сделает единый эффект на selectedMonsterId
         setBooting(false);
       } catch (err: unknown) {
         const errorMessage =
@@ -467,7 +341,7 @@ const App: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []); // Убираем лишние зависимости
+  }, [apiService]);
 
   // Обработка возврата с авторизации Yandex
   useEffect(() => {
@@ -504,9 +378,7 @@ const App: React.FC = () => {
         try {
           const tokenResponse = await fetch("https://oauth.yandex.ru/token", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({
               grant_type: "authorization_code",
               code,
@@ -525,9 +397,7 @@ const App: React.FC = () => {
           const infoResponse = await fetch(
             "https://login.yandex.ru/info?format=json",
             {
-              headers: {
-                Authorization: `OAuth ${accessToken}`,
-              },
+              headers: { Authorization: `OAuth ${accessToken}` },
             }
           );
 
@@ -544,9 +414,7 @@ const App: React.FC = () => {
             "https://functions.yandexcloud.net/d4el0k9669mrdg265k5r",
             {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 userId,
                 newserviceid: info.id,
@@ -582,23 +450,21 @@ const App: React.FC = () => {
     }
   }, [userId]);
 
-  // Эффект для предметов в комнате монстра
+  // Эффект для предпросмотра/кеша размеров предметов
   useEffect(() => {
-    if (roomItems.length === 0) {
-      return;
-    }
+    if (roomItems.length === 0) return;
 
     const loadDimensions = async () => {
       for (const item of roomItems) {
         try {
           const img = new Image();
-          await new Promise<void>((resolve, reject) => {
+          await new Promise<void>((resolve) => {
             img.onload = () => resolve();
             img.onerror = () => resolve();
             img.src = item.spriteUrl;
           });
-        } catch (error) {
-          console.warn(`Ошибка загрузки размеров для ${item.spriteUrl}`);
+        } catch {
+          // no-op
         }
       }
     };
@@ -606,7 +472,7 @@ const App: React.FC = () => {
     loadDimensions();
   }, [roomItems]);
 
-  // Оптимизированный таймер пополнения энергии
+  // Таймер пополнения энергии
   useEffect(() => {
     if (booting || !nextReplenishment) return;
 
@@ -619,7 +485,6 @@ const App: React.FC = () => {
       );
       setTimer(diff);
 
-      // Обновляем энергию только когда таймер достиг нуля И прошло время с последнего обновления
       if (diff === 0 && Date.now() - lastEnergyUpdate > 30000) {
         loadTeachEnergy(true);
       }
@@ -630,20 +495,67 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [booting, nextReplenishment, lastEnergyUpdate, loadTeachEnergy]);
 
+  // --- обработчик клика по воздействию ---
+  const handleImpactClick = useCallback(
+    async (impact: MonsterImpact) => {
+      if (
+        !impact.available ||
+        teachEnergy < impact.energyprice ||
+        !selectedMonsterId ||
+        !userId
+      ) {
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await apiService.applyImpact(
+          selectedMonsterId,
+          impact.id,
+          userId
+        );
+        setInteractionData(response);
+        setShowRaisingInteraction(true);
+
+        await Promise.all([
+          loadTeachEnergy(true),
+          loadCharacteristics(),
+          // при необходимости: loadMonsterRoom(), loadImpacts()
+          loadMainMenu(),
+        ]);
+      } catch {
+        setError("Ошибка при обновлении данных");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      teachEnergy,
+      selectedMonsterId,
+      userId,
+      apiService,
+      loadTeachEnergy,
+      loadCharacteristics,
+      loadMainMenu,
+    ]
+  );
+
   // --- UI ---
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
-      {/* ЭКРАН ПЕРВИЧНОЙ ЗАГРУЗКИ */}
+      {/* Экран первичной загрузки */}
       {booting && !error && <LoadingScreen bootTasks={bootTasks} />}
       {/* Спиннер для выполнения взаимодействий */}
       {isLoading && <Spinner overlay />}
       {/* Окно ошибок */}
       {error && <ErrorModal error={error} onClose={() => setError("")} />}
-      {/* Основное содержимое приложения */}
+
+      {/* Заголовок */}
       <div className="bg-gradient-to-r from-purple-500 to-orange-500 text-white text-4xl font-handwritten text-center py-4">
         СИМУЛЯТОР ВОСПИТАНИЯ МОНСТРОВ
       </div>
-      {/* Мобильная версия главного меню */}
+
+      {/* Мобильное меню */}
       <MobileMainMenu
         items={menuItems}
         selectedName={selectedMenuItem}
@@ -651,7 +563,8 @@ const App: React.FC = () => {
         onSelect={handleMenuClick}
         onToggleNotifications={() => setShowNotifications(!showNotifications)}
       />
-      {/* Десктопная версия главного меню */}
+
+      {/* Десктопное меню */}
       <DesktopMenu
         menuItems={menuItems}
         selectedMenuItem={selectedMenuItem}
@@ -659,9 +572,12 @@ const App: React.FC = () => {
         onMenuClick={handleMenuClick}
         onToggleNotifications={() => setShowNotifications(!showNotifications)}
       />
+
       {showNotifications && (
         <div className="bg-orange-100 p-4 shadow-md">Оповещения</div>
       )}
+
+      {/* Воспитательное взаимодействие */}
       {showRaisingInteraction && interactionData && (
         <RaisingInteraction
           videoUrl={interactionData.video || ""}
@@ -681,10 +597,14 @@ const App: React.FC = () => {
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.RAISING && (
           <div className="p-4">
-            {/* БЛОК С ПЕРЕКЛЮЧАТЕЛЕМ МОНСТРОВ И ЭНЕРГИЕЙ */}
+            {/* Переключатель монстров + энергия */}
             <div className="flex flex-col gap-4 md:flex-row md:justify-between">
-              <div className={`flex space-x-1 overflow-x-auto pb-1 ${isMonsterLoading ? "opacity-50" : ""}`}>
-                {monsters.map((monster, index) => {
+              <div
+                className={`flex space-x-1 overflow-x-auto pb-1 ${
+                  isMonsterLoading ? "opacity-50" : ""
+                }`}
+              >
+                {monsters.map((monster) => {
                   const monsterId = (monster as any).monsterId;
                   return (
                     <div
@@ -698,7 +618,9 @@ const App: React.FC = () => {
                           ? "cursor-not-allowed pointer-events-none"
                           : "cursor-pointer"
                       }`}
-                      onClick={() => !isMonsterLoading && handleMonsterSwitch(monsterId)}
+                      onClick={() =>
+                        !isMonsterLoading && handleMonsterSwitch(monsterId)
+                      }
                     >
                       <img
                         src={monster.face}
@@ -741,6 +663,7 @@ const App: React.FC = () => {
             </div>
 
             <div className="mt-4 flex flex-col md:flex-row md:space-x-1">
+              {/* Комната + характеристики */}
               <div className="w-full md:w-1/2 border border-gray-300 bg-orange-100 flex flex-col">
                 <CompositeRoomRenderer
                   roomImage={roomImage}
@@ -772,6 +695,7 @@ const App: React.FC = () => {
                 </div>
               </div>
 
+              {/* Воздействия */}
               <div className="w-full md:w-1/2 mt-4 md:mt-0 grid grid-cols-2 md:grid-cols-4 gap-1 bg-purple-200">
                 {impacts.map((impact) => {
                   const enduranceIcon =
@@ -828,6 +752,7 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
+
       {/* Остальные разделы */}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.ARENA && (
@@ -845,6 +770,7 @@ const App: React.FC = () => {
         selectedMenuSequence === MENU_SEQUENCES.ACCOUNT && (
           <Account userId={userId} />
         )}
+
       <SpeedInsights />
     </div>
   );
