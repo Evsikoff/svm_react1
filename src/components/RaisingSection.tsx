@@ -88,12 +88,18 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
           {monsters.map((monster, index) => (
             <div
               key={monster.name}
-              className={`relative min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 cursor-pointer border border-gray-300 ${
+              className={`relative min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 border border-gray-300 ${
                 selectedMonsterId === monstersId[index]
                   ? "border-2 border-purple-500"
                   : ""
+              } ${
+                isMonsterLoading
+                  ? "cursor-not-allowed pointer-events-none opacity-50"
+                  : "cursor-pointer"
               }`}
-              onClick={() => onMonsterSwitch(monstersId[index])}
+              onClick={() => {
+                if (!isMonsterLoading) onMonsterSwitch(monstersId[index]);
+              }}
             >
               <img
                 src={monster.face}
