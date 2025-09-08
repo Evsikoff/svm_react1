@@ -123,27 +123,37 @@ const App: React.FC = () => {
     [userId, isLoadingEnergy, lastEnergyUpdate, apiService]
   );
 
-  const loadCharacteristics = useCallback(async () => {
-    if (!selectedMonsterId) return;
-    const characteristicsRes = await apiService.getCharacteristics(
-      selectedMonsterId
-    );
-    setCharacteristics(characteristicsRes.monstercharacteristics || []);
-  }, [selectedMonsterId, apiService]);
+  const loadCharacteristics = useCallback(
+    async (monsterId?: number) => {
+      const id = monsterId ?? selectedMonsterId;
+      if (!id) return;
+      const characteristicsRes = await apiService.getCharacteristics(id);
+      setCharacteristics(characteristicsRes.monstercharacteristics || []);
+    },
+    [selectedMonsterId, apiService]
+  );
 
-  const loadMonsterRoom = useCallback(async () => {
-    if (!selectedMonsterId) return;
-    const roomRes = await apiService.getMonsterRoom(selectedMonsterId);
-    setMonsterImage(roomRes.monsterimage);
-    setRoomImage(roomRes.roomimage);
-    setRoomItems(roomRes.roomitems || []);
-  }, [selectedMonsterId, apiService]);
+  const loadMonsterRoom = useCallback(
+    async (monsterId?: number) => {
+      const id = monsterId ?? selectedMonsterId;
+      if (!id) return;
+      const roomRes = await apiService.getMonsterRoom(id);
+      setMonsterImage(roomRes.monsterimage);
+      setRoomImage(roomRes.roomimage);
+      setRoomItems(roomRes.roomitems || []);
+    },
+    [selectedMonsterId, apiService]
+  );
 
-  const loadImpacts = useCallback(async () => {
-    if (!selectedMonsterId) return;
-    const impactsRes = await apiService.getImpacts(selectedMonsterId);
-    setImpacts(impactsRes.monsterimpacts || []);
-  }, [selectedMonsterId, apiService]);
+  const loadImpacts = useCallback(
+    async (monsterId?: number) => {
+      const id = monsterId ?? selectedMonsterId;
+      if (!id) return;
+      const impactsRes = await apiService.getImpacts(id);
+      setImpacts(impactsRes.monsterimpacts || []);
+    },
+    [selectedMonsterId, apiService]
+  );
 
   const loadMonsters = useCallback(async () => {
     if (!monstersId.length) return;
@@ -199,7 +209,7 @@ const App: React.FC = () => {
 
   // --- обработчик переключения монстра ---
   const handleMonsterSwitch = useCallback(
-    (newMonsterId: number) => {
+    async (newMonsterId: number) => {
       if (newMonsterId === selectedMonsterId) return;
 
       // Сбрасываем старые данные изображений
@@ -207,9 +217,27 @@ const App: React.FC = () => {
       setRoomImage("");
       setRoomItems([]);
 
+      setIsMonsterLoading(true);
       setSelectedMonsterId(newMonsterId);
+
+      try {
+        await Promise.all([
+          loadCharacteristics(newMonsterId),
+          loadMonsterRoom(newMonsterId),
+          loadImpacts(newMonsterId),
+        ]);
+      } catch {
+        setError("Ошибка при обновлении данных");
+      } finally {
+        setIsMonsterLoading(false);
+      }
     },
-    [selectedMonsterId]
+    [
+      selectedMonsterId,
+      loadCharacteristics,
+      loadMonsterRoom,
+      loadImpacts,
+    ]
   );
 
   // --- Оптимизированный обработчик клика по воздействию ---
