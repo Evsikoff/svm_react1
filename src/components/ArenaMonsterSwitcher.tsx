@@ -12,6 +12,8 @@ const SPRITE_HEIGHT = 853 * SPRITE_SCALE;
 const BG_URL = "https://storage.yandexcloud.net/svm/img/lockerroomcycle.png";
 const BG_TILE_WIDTH = 500; // ширина одного тайла фонового изображения
 const BG_HEIGHT = 250;
+const FALLBACK_IMAGE_URL =
+  "https://storage.yandexcloud.net/svm/img/placeholder-monster.png";
 
 interface Props {
   userId: number;
@@ -89,6 +91,25 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
     }
   };
 
+  const handleImageError = (
+    id: number,
+    e: React.SyntheticEvent<HTMLImageElement, Event>
+  ) => {
+    console.error(
+      `Ошибка загрузки изображения монстра: ${e.currentTarget.src}`
+    );
+    e.currentTarget.onerror = null;
+    e.currentTarget.src = FALLBACK_IMAGE_URL;
+    setMonsters((prev) =>
+      prev.map((mon) =>
+        mon.arenamonsterid === id &&
+        mon.arenamonsterimage !== FALLBACK_IMAGE_URL
+          ? { ...mon, arenamonsterimage: FALLBACK_IMAGE_URL }
+          : mon
+      )
+    );
+  };
+
   const visibleWidth = containerWidth > 32 ? containerWidth - 32 : 0;
 
   const totalSpritesWidth =
@@ -151,13 +172,7 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
                   transform: isSelected ? "scale(1.05)" : "scale(1)",
                   filter: isSelected ? "brightness(1.1)" : "brightness(0.8)",
                 }}
-                onError={(e) => {
-                  console.error(
-                    `Ошибка загрузки изображения монстра: ${m.arenamonsterimage}`
-                  );
-                  e.currentTarget.src =
-                    "https://storage.yandexcloud.net/svm/img/placeholder-monster.png";
-                }}
+                onError={(e) => handleImageError(m.arenamonsterid, e)}
               />
               {isSelected && (
                 <div
