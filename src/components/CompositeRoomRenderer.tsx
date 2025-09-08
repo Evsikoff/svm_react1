@@ -43,13 +43,10 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
     const promise = new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
 
-      img.onload = async () => {
-        try {
-          // Ожидаем декодирование, чтобы избежать мерцаний
-          await img.decode?.();
-        } catch {
-          // decode может быть не поддержан, игнорируем
-        }
+      img.onload = () => {
+        // Стартуем декодирование, но не блокируемся на нём,
+        // чтобы избежать зависаний из-за неразрешившегося decode()
+        img.decode?.().catch(() => {});
         resolve(img);
       };
 
