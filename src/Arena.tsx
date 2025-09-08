@@ -4,6 +4,7 @@ import CompetitionEnergy from "./components/CompetitionEnergy";
 import ArenaMonsterSwitcher from "./components/ArenaMonsterSwitcher";
 import Competitions from "./components/Competitions";
 import CurrentCompetition from "./components/CurrentCompetition";
+import CompetitionHistory from "./components/CompetitionHistory";
 
 interface ArenaProps {
   userId: number | null;
@@ -15,6 +16,7 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
   );
   const [currentCompetitionId, setCurrentCompetitionId] =
     useState<number | null>(null);
+  const [historyEnabled, setHistoryEnabled] = useState(false);
 
   // Обработчик смены монстра из ArenaMonsterSwitcher
   const handleMonsterChange = (monsterId: number) => {
@@ -24,6 +26,23 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
   const handleCompetitionStart = (id: number) => {
     setCurrentCompetitionId(id);
   };
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const controller = new AbortController();
+    fetch(
+      `https://competitionhistoryenable.onrender.com/check?userId=${userId}`,
+      { signal: controller.signal }
+    )
+      .then((res) => res.json())
+      .then((data) => setHistoryEnabled(Boolean(data.competitionhistoryenable)))
+      .catch((err) => {
+        console.error("Ошибка загрузки истории состязаний:", err);
+      });
+
+    return () => controller.abort();
+  }, [userId]);
 
   if (!userId) return null;
 
@@ -59,6 +78,12 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
           />
         </div>
       </div>
+
+      {historyEnabled && (
+        <div className="mt-6">
+          <CompetitionHistory />
+        </div>
+      )}
 
       {/* Компонент "Состязания" */}
       <div className="mt-6">
