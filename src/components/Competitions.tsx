@@ -1,5 +1,5 @@
 // src/components/Competitions.tsx - компонент "Состязания"
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import WaitingForOpponentsModal from "./WaitingForOpponentsModal";
 
@@ -90,6 +90,16 @@ const Competitions: React.FC<CompetitionsProps> = ({
       setSelectedCompetitionId(competition.monstercompetitionid);
     }
   };
+
+  const handleCompetitionStart = useCallback(
+    (id: number) => {
+      setSelectedCompetitionId(null);
+      if (onCompetitionStart) {
+        onCompetitionStart(id);
+      }
+    },
+    [onCompetitionStart]
+  );
 
   if (loading) {
     return (
@@ -242,12 +252,7 @@ const Competitions: React.FC<CompetitionsProps> = ({
         <WaitingForOpponentsModal
           monsterId={selectedMonsterId}
           competitionId={selectedCompetitionId}
-          onCompetitionStart={(id) => {
-            setSelectedCompetitionId(null);
-            if (onCompetitionStart) {
-              onCompetitionStart(id);
-            }
-          }}
+          onCompetitionStart={handleCompetitionStart}
         />
       )}
     </div>
