@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Spinner from "./Spinner";
 
@@ -20,6 +20,11 @@ const WaitingForOpponentsModal: React.FC<WaitingProps> = ({
   const [timer, setTimer] = useState(120);
   const [message, setMessage] = useState<string>("");
   const [stage, setStage] = useState<"waiting" | "starting">("waiting");
+  const onCompetitionStartRef = useRef(onCompetitionStart);
+
+  useEffect(() => {
+    onCompetitionStartRef.current = onCompetitionStart;
+  }, [onCompetitionStart]);
 
   // Countdown timer
   useEffect(() => {
@@ -48,7 +53,7 @@ const WaitingForOpponentsModal: React.FC<WaitingProps> = ({
           { timeout: 6000 }
         )
         .then(() => {
-          onCompetitionStart(id);
+          onCompetitionStartRef.current(id);
         })
         .catch((err: any) => {
           if (err.code === "ECONNABORTED") {
@@ -79,7 +84,7 @@ const WaitingForOpponentsModal: React.FC<WaitingProps> = ({
     return () => {
       ws.close();
     };
-  }, [monsterId, competitionId, onCompetitionStart]);
+  }, [monsterId, competitionId]);
 
   const minutes = Math.floor(timer / 60)
     .toString()
