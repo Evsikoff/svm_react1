@@ -95,19 +95,30 @@ const ArenaMonsterSwitcher: React.FC<Props> = ({
     id: number,
     e: React.SyntheticEvent<HTMLImageElement, Event>
   ) => {
+    // Prevent infinite re-renders by updating state only once per failed image
     console.error(
       `Ошибка загрузки изображения монстра: ${e.currentTarget.src}`
     );
+    if (e.currentTarget.src === FALLBACK_IMAGE_URL) {
+      e.currentTarget.onerror = null;
+      return;
+    }
     e.currentTarget.onerror = null;
     e.currentTarget.src = FALLBACK_IMAGE_URL;
-    setMonsters((prev) =>
-      prev.map((mon) =>
-        mon.arenamonsterid === id &&
-        mon.arenamonsterimage !== FALLBACK_IMAGE_URL
-          ? { ...mon, arenamonsterimage: FALLBACK_IMAGE_URL }
-          : mon
-      )
-    );
+    setMonsters((prev) => {
+      let changed = false;
+      const updated = prev.map((mon) => {
+        if (
+          mon.arenamonsterid === id &&
+          mon.arenamonsterimage !== FALLBACK_IMAGE_URL
+        ) {
+          changed = true;
+          return { ...mon, arenamonsterimage: FALLBACK_IMAGE_URL };
+        }
+        return mon;
+      });
+      return changed ? updated : prev;
+    });
   };
 
   const visibleWidth = containerWidth > 32 ? containerWidth - 32 : 0;
