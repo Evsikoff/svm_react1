@@ -70,6 +70,13 @@ export async function withInfiniteRetryAndTimeout<T>(
           await new Promise((resolve) => setTimeout(resolve, 300));
           continue;
         }
+        const isAbortError =
+          (e as any)?.code === "ERR_CANCELED" ||
+          (e as any)?.name === "AbortError" ||
+          errorMessage === "canceled";
+        if (isAbortError) {
+          throw e;
+        }
         const text = `${labelForError}: ${errorMessage}`;
         if (onError) {
           onError(text);

@@ -129,17 +129,24 @@ export class ApiService {
       },
       5000,
       "Ошибка при загрузке характеристик монстра",
-      this.onError
+      this.onError,
+      false // Отключаем кеширование, чтобы не блокировать обновление при переключении монстра
     );
   }
 
-  async getMonsterRoom(monsterId: number): Promise<MonsterRoomResponse> {
+  async getMonsterRoom(
+    monsterId: number,
+    signal?: AbortSignal
+  ): Promise<MonsterRoomResponse> {
     return withInfiniteRetryAndTimeout(
       async () => {
         const response = await axios.post<MonsterRoomResponse>(
           API_URLS.monsterroom,
           {
             monsterId,
+          },
+          {
+            signal,
           }
         );
 
@@ -157,7 +164,8 @@ export class ApiService {
       },
       5000,
       "Ошибка при загрузке изображений монстра и комнаты",
-      this.onError
+      this.onError,
+      false // Отключаем кеширование, чтобы можно было прерывать загрузку при переключении монстра
     );
   }
 
@@ -174,7 +182,8 @@ export class ApiService {
       },
       5000,
       "Ошибка при загрузке взаимодействий",
-      this.onError
+      this.onError,
+      false // Отключаем кеширование для корректного переключения монстра
     );
   }
 
