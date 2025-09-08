@@ -771,6 +771,20 @@ const App: React.FC = () => {
           <Account userId={userId} />
         )}
 
+      {/* Подвал с ссылкой на оферту */}
+      <footer className="bg-gradient-to-r from-purple-500 to-orange-500 text-white py-2 mt-8">
+        <div className="text-center">
+          <a
+            href="https://docs.google.com/document/d/e/2PACX-1vTOXF-D4HZnMxHe9v1JXwQQTdb_Ys1Hx1EqGPhEV0aoRQsZ8aHdLb1r7TGQqg-mml-kcyhOomch6YgQ/pub"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white text-sm underline hover:text-purple-200 transition-colors duration-200"
+          >
+            Оферта
+          </a>
+        </div>
+      </footer>
+
       <SpeedInsights />
     </div>
   );
