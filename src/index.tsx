@@ -223,7 +223,7 @@ const App: React.FC = () => {
   // --- обработчик переключения монстра ---
   const handleMonsterSwitch = useCallback(
     async (newMonsterId: number) => {
-      if (newMonsterId === selectedMonsterId) return;
+      if (newMonsterId === selectedMonsterId || isMonsterLoading) return;
 
       // Сбрасываем старые данные изображений
       setMonsterImage("");
@@ -683,18 +683,22 @@ const App: React.FC = () => {
           <div className="p-4">
             {/* БЛОК С ПЕРЕКЛЮЧАТЕЛЕМ МОНСТРОВ И ЭНЕРГИЕЙ */}
             <div className="flex flex-col gap-4 md:flex-row md:justify-between">
-              <div className="flex space-x-1 overflow-x-auto pb-1">
+              <div className={`flex space-x-1 overflow-x-auto pb-1 ${isMonsterLoading ? "opacity-50" : ""}`}>
                 {monsters.map((monster, index) => {
                   const monsterId = (monster as any).monsterId;
                   return (
                     <div
                       key={`${monster.name}-${monsterId}`}
-                      className={`relative min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 cursor-pointer border border-gray-300 ${
+                      className={`relative min-w-[229px] w-[229px] h-[200px] bg-orange-50 shadow-lg p-2 border border-gray-300 ${
                         selectedMonsterId === monsterId
                           ? "border-2 border-purple-500"
                           : ""
+                      } ${
+                        isMonsterLoading
+                          ? "cursor-not-allowed pointer-events-none"
+                          : "cursor-pointer"
                       }`}
-                      onClick={() => handleMonsterSwitch(monsterId)}
+                      onClick={() => !isMonsterLoading && handleMonsterSwitch(monsterId)}
                     >
                       <img
                         src={monster.face}
