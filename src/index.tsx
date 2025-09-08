@@ -124,6 +124,7 @@ const App: React.FC = () => {
     [userId, isLoadingEnergy, lastEnergyUpdate, apiService]
   );
 
+
   useEffect(() => {
     selectedMonsterIdRef.current = selectedMonsterId;
   }, [selectedMonsterId]);
@@ -137,6 +138,7 @@ const App: React.FC = () => {
       setCharacteristics(characteristicsRes.monstercharacteristics || []);
     },
     [apiService]
+
   );
 
   const loadMonsterRoom = useCallback(
@@ -145,11 +147,13 @@ const App: React.FC = () => {
       if (!id) return;
       const roomRes = await apiService.getMonsterRoom(id);
       if (id !== selectedMonsterIdRef.current) return;
+
       setMonsterImage(roomRes.monsterimage);
       setRoomImage(roomRes.roomimage);
       setRoomItems(roomRes.roomitems || []);
     },
     [apiService]
+
   );
 
   const loadImpacts = useCallback(
@@ -161,6 +165,7 @@ const App: React.FC = () => {
       setImpacts(impactsRes.monsterimpacts || []);
     },
     [apiService]
+
   );
 
   const loadMonsters = useCallback(async () => {
@@ -217,7 +222,7 @@ const App: React.FC = () => {
 
   // --- обработчик переключения монстра ---
   const handleMonsterSwitch = useCallback(
-    (newMonsterId: number) => {
+    async (newMonsterId: number) => {
       if (newMonsterId === selectedMonsterId) return;
 
       // Сбрасываем старые данные изображений
@@ -227,8 +232,25 @@ const App: React.FC = () => {
 
       setIsMonsterLoading(true);
       setSelectedMonsterId(newMonsterId);
+
+      try {
+        await Promise.all([
+          loadCharacteristics(newMonsterId),
+          loadMonsterRoom(newMonsterId),
+          loadImpacts(newMonsterId),
+        ]);
+      } catch {
+        setError("Ошибка при обновлении данных");
+      } finally {
+        setIsMonsterLoading(false);
+      }
     },
-    [selectedMonsterId]
+    [
+      selectedMonsterId,
+      loadCharacteristics,
+      loadMonsterRoom,
+      loadImpacts,
+    ]
   );
 
   // --- загрузка данных при изменении монстра ---
