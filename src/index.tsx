@@ -246,8 +246,6 @@ const App: React.FC = () => {
         setError("Ошибка при обновлении данных");
       } finally {
         setIsLoading(false);
-        setShowRaisingInteraction(false);
-        setInteractionData(null);
       }
     },
     [
