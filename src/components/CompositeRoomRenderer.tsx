@@ -1,5 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 
+// Кэш промисов загрузки изображений для предотвращения повторных запросов
+const imageCache = new Map<string, Promise<HTMLImageElement>>();
+
 // Локальные типы для предметов в комнате
 interface RoomItem {
   id: number;
@@ -33,7 +36,12 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
 
   // Функция для загрузки изображения с обработкой CORS
   const loadImage = useCallback((src: string): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
+    // Возвращаем уже созданный промис, если изображение уже загружается или загружено
+    if (imageCache.has(src)) {
+      return imageCache.get(src)!;
+    }
+
+    const promise = new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
 
       // Настройка CORS - пробуем разные варианты
@@ -54,7 +62,14 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
       };
 
       img.src = src;
+    }).catch((err) => {
+      // Если загрузка провалилась, удаляем запись из кэша, чтобы можно было повторить
+      imageCache.delete(src);
+      throw err;
     });
+
+    imageCache.set(src, promise);
+    return promise;
   }, []);
 
   // Основная функция генерации композитного изображения
