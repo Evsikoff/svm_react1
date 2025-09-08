@@ -218,7 +218,8 @@ const App: React.FC = () => {
       if (
         !impact.available ||
         teachEnergy < impact.energyprice ||
-        !selectedMonsterId
+        !selectedMonsterId ||
+        !userId
       )
         return;
 
@@ -226,7 +227,8 @@ const App: React.FC = () => {
       try {
         const response = await apiService.applyImpact(
           selectedMonsterId,
-          impact.id
+          impact.id,
+          userId
         );
         setInteractionData(response);
         setShowRaisingInteraction(true);
@@ -258,6 +260,7 @@ const App: React.FC = () => {
       loadImpacts,
       loadMonsters,
       loadMainMenu,
+      userId,
     ]
   );
 
