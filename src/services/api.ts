@@ -180,7 +180,8 @@ export class ApiService {
 
   async applyImpact(
     monsterId: number,
-    impactId: number
+    impactId: number,
+    userId: number
   ): Promise<ImpactResponse> {
     // Сбрасываем время последнего запроса энергии при применении воздействия
     this.lastEnergyRequest = 0;
@@ -190,6 +191,7 @@ export class ApiService {
         const response = await axios.post<ImpactResponse>(API_URLS.impact, {
           monsterId,
           impactId,
+          userId,
         });
         return response.data;
       },
