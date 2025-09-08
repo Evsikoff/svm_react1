@@ -34,9 +34,8 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [aspect, setAspect] = useState<string>("4/3");
 
-  // Функция для загрузки изображения с обработкой CORS
+  // Функция для загрузки изображения с кэшированием
   const loadImage = useCallback((src: string): Promise<HTMLImageElement> => {
-    // Возвращаем уже созданный промис, если изображение уже загружается или загружено
     if (imageCache.has(src)) {
       return imageCache.get(src)!;
     }
@@ -44,26 +43,22 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
     const promise = new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
 
-      // Настройка CORS - пробуем разные варианты
-      img.crossOrigin = "anonymous";
-
-      img.onload = () => {
+      img.onload = async () => {
+        try {
+          // Ожидаем декодирование, чтобы избежать мерцаний
+          await img.decode?.();
+        } catch {
+          // decode может быть не поддержан, игнорируем
+        }
         resolve(img);
       };
 
-      img.onerror = (error) => {
-        console.warn(`Ошибка загрузки изображения ${src}:`, error);
-        // Пробуем загрузить без CORS
-        const imgFallback = new Image();
-        imgFallback.onload = () => resolve(imgFallback);
-        imgFallback.onerror = () =>
-          reject(new Error(`Не удалось загрузить изображение: ${src}`));
-        imgFallback.src = src;
+      img.onerror = () => {
+        reject(new Error(`Не удалось загрузить изображение: ${src}`));
       };
 
       img.src = src;
     }).catch((err) => {
-      // Если загрузка провалилась, удаляем запись из кэша, чтобы можно было повторить
       imageCache.delete(src);
       throw err;
     });
@@ -73,9 +68,12 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
   }, []);
 
   // Основная функция генерации композитного изображения
+  const renderId = useRef(0);
+
   const generateCompositeImage = useCallback(async () => {
     if (!roomImage || !canvasRef.current) return;
 
+    const currentId = ++renderId.current;
     setIsGenerating(true);
     setError(null);
     setIsReady(false);
@@ -85,61 +83,45 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Не удалось получить контекст canvas");
 
-      // 1. Загружаем фоновое изображение
-      console.log("Загружаем фоновое изображение:", roomImage);
-      const backgroundImg = await loadImage(roomImage);
+      // Загружаем фон и все спрайты параллельно
+      const backgroundPromise = loadImage(roomImage);
+      const spritesPromise = Promise.all(
+        roomItems.map(async (item) => {
+          try {
+            const spriteImg = await loadImage(item.spriteUrl);
+            return { item, spriteImg } as const;
+          } catch (error) {
+            console.warn(`Ошибка загрузки спрайта ${item.name}:`, error);
+            return null;
+          }
+        })
+      );
 
-      // Устанавливаем размер canvas равным размеру фонового изображения
-      canvas.width = backgroundImg.naturalWidth;
-      canvas.height = backgroundImg.naturalHeight;
+      const [backgroundImg, loadedSpritesRaw] = await Promise.all([
+        backgroundPromise,
+        spritesPromise,
+      ]);
 
-      // Устанавливаем aspect ratio
-      setAspect(`${backgroundImg.naturalWidth / backgroundImg.naturalHeight}`);
+      if (renderId.current !== currentId) return; // отмена
 
-      console.log(`Размер canvas: ${canvas.width}x${canvas.height}`);
-
-      // 2. Рисуем фон
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(backgroundImg, 0, 0);
-
-      // 3. Загружаем все спрайты предметов параллельно
-      console.log(`Загружаем ${roomItems.length} спрайтов предметов`);
-      const spritePromises = roomItems.map(async (item) => {
-        try {
-          console.log(`Загружаем спрайт: ${item.name} - ${item.spriteUrl}`);
-          const spriteImg = await loadImage(item.spriteUrl);
-          return { item, spriteImg };
-        } catch (error) {
-          console.warn(`Ошибка загрузки спрайта ${item.name}:`, error);
-          return null;
-        }
-      });
-
-      const loadedSprites = (await Promise.all(spritePromises)).filter(
+      const loadedSprites = loadedSpritesRaw.filter(
         (result): result is { item: RoomItem; spriteImg: HTMLImageElement } =>
           result !== null
       );
-      console.log(
-        `Успешно загружено ${loadedSprites.length} из ${roomItems.length} спрайтов`
-      );
 
-      // 4. Накладываем спрайты на фон
-      loadedSprites.forEach((spriteData) => {
-        const { item, spriteImg } = spriteData;
+      // Устанавливаем размеры canvas по фону
+      canvas.width = backgroundImg.naturalWidth;
+      canvas.height = backgroundImg.naturalHeight;
+      setAspect(`${backgroundImg.naturalWidth / backgroundImg.naturalHeight}`);
 
-        // Вычисляем позицию центра спрайта на canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(backgroundImg, 0, 0);
+
+      loadedSprites.forEach(({ item, spriteImg }) => {
         const centerX = (item.xaxis / 100) * canvas.width;
         const centerY = (item.yaxis / 100) * canvas.height;
-
-        // Вычисляем координаты левого верхнего угла спрайта
         const spriteX = centerX - spriteImg.naturalWidth / 2;
         const spriteY = centerY - spriteImg.naturalHeight / 2;
-
-        console.log(
-          `Размещаем спрайт ${item.name} в позиции (${centerX}, ${centerY}), размер: ${spriteImg.naturalWidth}x${spriteImg.naturalHeight}`
-        );
-
-        // Рисуем спрайт
         ctx.drawImage(
           spriteImg,
           spriteX,
@@ -149,9 +131,9 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
         );
       });
 
-      // Поскольку мы отображаем canvas напрямую, нет нужды в toDataURL
+      if (renderId.current !== currentId) return; // проверка отмены после рисования
+
       setIsReady(true);
-      console.log("Композитное изображение создано успешно");
     } catch (err) {
       console.error("Ошибка при генерации композитного изображения:", err);
       setError(
@@ -160,7 +142,9 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
           : "Неизвестная ошибка при создании композитного изображения"
       );
     } finally {
-      setIsGenerating(false);
+      if (renderId.current === currentId) {
+        setIsGenerating(false);
+      }
     }
   }, [roomImage, roomItems, loadImage]);
 
