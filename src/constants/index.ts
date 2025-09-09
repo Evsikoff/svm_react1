@@ -28,7 +28,7 @@ export const API_URLS = {
     "https://monstercharacteristics-production.up.railway.app/characteristics",
   monsterroom: "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
   impacts: "https://monsterimpacts-production.up.railway.app/monster-impacts",
-  impact: "https://functions.yandexcloud.net/d4een4tv1fhjs9o05ogj",
+  impact: "https://impactslauncher-production.up.railway.app/impact-exec",
 };
 
 // Образы и иконки
