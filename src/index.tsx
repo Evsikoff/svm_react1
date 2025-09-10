@@ -540,6 +540,21 @@ const App: React.FC = () => {
     ]
   );
 
+  const handleRaisingInteractionClose = useCallback(async () => {
+    try {
+      await Promise.all([
+        loadImpacts(),
+        loadCharacteristics(),
+        loadMonsterRoom(),
+      ]);
+    } catch {
+      setError("Ошибка при обновлении данных");
+    } finally {
+      setShowRaisingInteraction(false);
+      setInteractionData(null);
+    }
+  }, [loadImpacts, loadCharacteristics, loadMonsterRoom]);
+
   // --- UI ---
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200">
@@ -586,10 +601,7 @@ const App: React.FC = () => {
           inventoryItems={interactionData.inventoryitems || []}
           itemEffects={interactionData.itemeffects || []}
           itemBonuses={interactionData.impactitembonuses || []}
-          onClose={() => {
-            setShowRaisingInteraction(false);
-            setInteractionData(null);
-          }}
+          onClose={handleRaisingInteractionClose}
         />
       )}
 
