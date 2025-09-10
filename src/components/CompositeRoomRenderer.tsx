@@ -222,7 +222,26 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
           aria-hidden="true"
         />
 
-        {showSpinner ? (
+        {/* Готовое изображение (canvas видим через стиль) */}
+        <div className="relative w-full h-full">
+          {/* Монстр поверх */}
+          {monsterImage && (
+            <img
+              src={monsterImage}
+              alt="Monster"
+              className="absolute bottom-[10%] left-1/2 w-1/2 transform -translate-x-1/2"
+              style={{ zIndex: 10 }}
+              onLoad={() => setMonsterLoaded(true)}
+              onError={() => {
+                console.warn(
+                  `Ошибка загрузки изображения монстра: ${monsterImage}`
+                );
+              }}
+            />
+          )}
+        </div>
+
+        {showSpinner && (
           // Спиннер во время загрузки/генерации
           <div className="absolute inset-0 flex items-center justify-center bg-white/80">
             <div className="flex flex-col items-center gap-2">
@@ -236,7 +255,9 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
               </span>
             </div>
           </div>
-        ) : error ? (
+        )}
+
+        {error && (
           // Ошибка
           <div className="absolute inset-0 flex items-center justify-center bg-red-50">
             <div className="text-center p-4">
@@ -246,25 +267,6 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
               </div>
               <div className="text-red-600 text-xs max-w-xs">{error}</div>
             </div>
-          </div>
-        ) : (
-          // Готовое изображение (canvas видим через стиль)
-          <div className="relative w-full h-full">
-            {/* Монстр поверх */}
-            {monsterImage && (
-              <img
-                src={monsterImage}
-                alt="Monster"
-                className="absolute bottom-[10%] left-1/2 w-1/2 transform -translate-x-1/2"
-                style={{ zIndex: 10 }}
-                onLoad={() => setMonsterLoaded(true)}
-                onError={() => {
-                  console.warn(
-                    `Ошибка загрузки изображения монстра: ${monsterImage}`
-                  );
-                }}
-              />
-            )}
           </div>
         )}
       </div>
