@@ -216,10 +216,10 @@ const App: React.FC = () => {
 
     Promise.all([loadCharacteristics(), loadMonsterRoom(), loadImpacts()])
       .catch(() => {
-        if (!cancelled) setError("Ошибка при обновлении данных");
-      })
-      .finally(() => {
-        if (!cancelled) setIsMonsterLoading(false);
+        if (!cancelled) {
+          setError("Ошибка при обновлении данных");
+          setIsMonsterLoading(false);
+        }
       });
 
     return () => {
@@ -683,6 +683,7 @@ const App: React.FC = () => {
                   roomItems={roomItems}
                   isLoading={isMonsterLoading}
                   className="w-full"
+                  onReady={() => setIsMonsterLoading(false)}
                 />
 
                 <div className="mt-4 space-y-2 p-2">

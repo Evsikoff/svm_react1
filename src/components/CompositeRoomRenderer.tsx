@@ -19,6 +19,7 @@ interface CompositeRoomRendererProps {
   roomItems: RoomItem[];
   isLoading: boolean;
   className?: string;
+  onReady?: () => void;
 }
 
 const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
@@ -27,12 +28,14 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
   roomItems,
   isLoading,
   className = "",
+  onReady,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isReady, setIsReady] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [aspect, setAspect] = useState<string>("4/3");
+  const [monsterLoaded, setMonsterLoaded] = useState<boolean>(false);
 
   // Функция для загрузки изображения с обработкой CORS
   const loadImage = useCallback((src: string): Promise<HTMLImageElement> => {
@@ -159,17 +162,30 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
           ? err.message
           : "Неизвестная ошибка при создании композитного изображения"
       );
+      onReady?.();
     } finally {
       setIsGenerating(false);
     }
-  }, [roomImage, roomItems, loadImage]);
+  }, [roomImage, roomItems, loadImage, onReady]);
 
   // Запускаем генерацию при изменении данных
   useEffect(() => {
-    if (roomImage && !isLoading) {
+    if (roomImage) {
       generateCompositeImage();
     }
-  }, [roomImage, roomItems, isLoading, generateCompositeImage]);
+  }, [roomImage, roomItems, generateCompositeImage]);
+
+  // Сброс флага загрузки монстра при смене изображения
+  useEffect(() => {
+    setMonsterLoaded(false);
+  }, [monsterImage]);
+
+  // Сообщаем родителю, когда и фон, и монстр загружены
+  useEffect(() => {
+    if (isReady && monsterLoaded && roomImage && monsterImage) {
+      onReady?.();
+    }
+  }, [isReady, monsterLoaded, roomImage, monsterImage, onReady]);
 
   // Управление видимостью canvas
   useEffect(() => {
@@ -241,7 +257,8 @@ const CompositeRoomRenderer: React.FC<CompositeRoomRendererProps> = ({
                 alt="Monster"
                 className="absolute bottom-[10%] left-1/2 w-1/2 transform -translate-x-1/2"
                 style={{ zIndex: 10 }}
-                onError={(e) => {
+                onLoad={() => setMonsterLoaded(true)}
+                onError={() => {
                   console.warn(
                     `Ошибка загрузки изображения монстра: ${monsterImage}`
                   );
