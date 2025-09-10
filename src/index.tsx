@@ -597,7 +597,7 @@ const App: React.FC = () => {
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.RAISING && (
           <div className="p-4">
-            {/* Переключатель монстров + энергия */}
+            {/* Переключатель монстров + энергия*/}
             <div className="flex flex-col gap-4 md:flex-row md:justify-between">
               <div
                 className={`flex space-x-1 overflow-x-auto pb-1 ${
