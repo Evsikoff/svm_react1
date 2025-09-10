@@ -129,7 +129,8 @@ export class ApiService {
       },
       5000,
       "Ошибка при загрузке характеристик монстра",
-      this.onError
+      this.onError,
+      false // Отключаем кеширование для характеристик
     );
   }
 
@@ -157,7 +158,8 @@ export class ApiService {
       },
       5000,
       "Ошибка при загрузке изображений монстра и комнаты",
-      this.onError
+      this.onError,
+      false // Отключаем кеширование для комнаты
     );
   }
 
@@ -174,7 +176,8 @@ export class ApiService {
       },
       5000,
       "Ошибка при загрузке взаимодействий",
-      this.onError
+      this.onError,
+      false // Отключаем кеширование для воздействий
     );
   }
 

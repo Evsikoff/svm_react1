@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -91,6 +97,9 @@ const App: React.FC = () => {
   // --- состояния для оптимизации энергии ---
   const [isLoadingEnergy, setIsLoadingEnergy] = useState<boolean>(false);
   const [lastEnergyUpdate, setLastEnergyUpdate] = useState<number>(0);
+
+  // НОВОЕ: Используем useRef для отслеживания текущего запроса монстра
+  const currentLoadingMonsterRef = useRef<number | null>(null);
 
   // Api: СТАБИЛЬНЫЙ экземпляр на весь жизненный цикл компонента
   const apiService = useMemo(
@@ -194,12 +203,20 @@ const App: React.FC = () => {
   // --- обработчик переключения монстра ---
   const handleMonsterSwitch = useCallback(
     (newMonsterId: number) => {
-      if (newMonsterId === selectedMonsterId || isMonsterLoading) return;
+      if (newMonsterId === selectedMonsterId) return;
+
+      // Блокируем переключение если идет загрузка
+      if (isMonsterLoading) return;
 
       // Сбрасываем визуал
       setMonsterImage("");
       setRoomImage("");
       setRoomItems([]);
+      setCharacteristics([]);
+      setImpacts([]);
+
+      // Сохраняем ID монстра, который начинаем загружать
+      currentLoadingMonsterRef.current = newMonsterId;
 
       // Только меняем выбранного монстра — эффект ниже загрузит пакет
       setSelectedMonsterId(newMonsterId);
@@ -207,20 +224,39 @@ const App: React.FC = () => {
     [selectedMonsterId, isMonsterLoading]
   );
 
-  // --- единая точка загрузки “пакета монстра”: характеристики + комната + воздействия ---
+  // --- единая точка загрузки "пакета монстра": характеристики + комната + воздействия ---
   useEffect(() => {
     if (!selectedMonsterId) return;
 
     let cancelled = false;
     setIsMonsterLoading(true);
 
-    Promise.all([loadCharacteristics(), loadMonsterRoom(), loadImpacts()])
-      .catch(() => {
-        if (!cancelled) setError("Ошибка при обновлении данных");
-      })
-      .finally(() => {
-        if (!cancelled) setIsMonsterLoading(false);
-      });
+    const loadMonsterData = async () => {
+      try {
+        await Promise.all([
+          loadCharacteristics(),
+          loadMonsterRoom(),
+          loadImpacts(),
+        ]);
+
+        // Проверяем, что это все еще тот же монстр, которого мы начали загружать
+        if (
+          !cancelled &&
+          currentLoadingMonsterRef.current === selectedMonsterId
+        ) {
+          // Данные уже установлены в функциях выше, просто завершаем загрузку
+          setIsMonsterLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Ошибка при загрузке данных монстра:", err);
+          setError("Ошибка при обновлении данных");
+          setIsMonsterLoading(false);
+        }
+      }
+    };
+
+    loadMonsterData();
 
     return () => {
       cancelled = true;
@@ -317,7 +353,11 @@ const App: React.FC = () => {
         } else if (sorted.length > 0) {
           selectedMonsterLocal = (sorted[0] as any).monsterId;
         }
+
+        // Сохраняем начальный ID монстра
+        currentLoadingMonsterRef.current = selectedMonsterLocal;
         setSelectedMonsterId(selectedMonsterLocal);
+
         if (selectedMonsterLocal == null) {
           throw new Error("Не удалось определить выбранного монстра");
         }
