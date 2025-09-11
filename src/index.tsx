@@ -556,16 +556,16 @@ const App: React.FC = () => {
         );
         setInteractionData(response);
         setShowRaisingInteraction(true);
-
+        setIsLoading(false);
         await Promise.all([
           loadTeachEnergy(true),
           loadCharacteristics(),
-          // при необходимости: loadMonsterRoom(), loadImpacts()
+          loadMonsterRoom(),
+          loadImpacts(),
           loadMainMenu(),
         ]);
       } catch {
         setError("Ошибка при обновлении данных");
-      } finally {
         setIsLoading(false);
       }
     },
@@ -576,6 +576,8 @@ const App: React.FC = () => {
       apiService,
       loadTeachEnergy,
       loadCharacteristics,
+      loadMonsterRoom,
+      loadImpacts,
       loadMainMenu,
     ]
   );
