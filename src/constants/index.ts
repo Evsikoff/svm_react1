@@ -21,12 +21,13 @@ export const API_URLS = {
     "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/notificationcounter",
   monsters:
     "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/monsters",
-  teachenergy: "https://functions.yandexcloud.net/d4ek0gg34e57hosr45u8",
+  teachenergy: "https://userteachenergy-production.up.railway.app/teachenergy",
   competitionenergy: "https://functions.yandexcloud.net/d4e83k58k32gf9ibt1jt",
   arenamonsters: "https://functions.yandexcloud.net/d4es67buap1fl8ad3sp8",
-  characteristics: "https://functions.yandexcloud.net/d4eja3aglipp5f8hfb73",
+  characteristics:
+    "https://monstercharacteristics-production.up.railway.app/characteristics",
   monsterroom: "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
-  impacts: "https://functions.yandexcloud.net/d4en3p6tiu5kcoe261mj",
+  impacts: "https://monsterimpacts-production.up.railway.app/monster-impacts",
   impact: "https://impactslauncher-production.up.railway.app/impact-exec",
 };
 
