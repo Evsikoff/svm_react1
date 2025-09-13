@@ -125,7 +125,7 @@ const Inventory: React.FC<InventoryProps> = ({ userId }) => {
       const response = await withInfiniteRetryOnTimeout(
         () =>
           axios.post<UserItemsResponse>(
-            "https://functions.yandexcloud.net/d4equu3ca3un79vad7eq",
+            "https://useritemget-production.up.railway.app/inventory",
             { userId }
           ),
         4000,
