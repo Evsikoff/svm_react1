@@ -18,8 +18,7 @@ export const API_URLS = {
   mainmenu: "https://mainmenu-production-4496.up.railway.app/menuitems",
   notifications:
     "https://notificationcounter-production.up.railway.app/notifications",
-  monsters:
-    "https://d5ddiovnmsbs5p6merq9.8wihnuyr.apigw.yandexcloud.net/monsters",
+  monsters: "https://monsters-production.up.railway.app/monsters",
   teachenergy: "https://userteachenergy-production.up.railway.app/teachenergy",
   competitionenergy: "https://functions.yandexcloud.net/d4e83k58k32gf9ibt1jt",
   arenamonsters: "https://functions.yandexcloud.net/d4es67buap1fl8ad3sp8",
