@@ -24,7 +24,7 @@ export const API_URLS = {
   arenamonsters: "https://functions.yandexcloud.net/d4es67buap1fl8ad3sp8",
   characteristics:
     "https://monstercharacteristics-production.up.railway.app/characteristics",
-  monsterroom: "https://functions.yandexcloud.net/d4eqemr3g0g9i1kbt5u0",
+  monsterroom: "https://monsterimage-production.up.railway.app/monster-room",
   impacts: "https://monsterimpacts-production.up.railway.app/monster-impacts",
   impact: "https://impactslauncher-production.up.railway.app/impact-exec",
 };
