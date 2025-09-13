@@ -80,7 +80,7 @@ const Shop: React.FC<Props> = ({ userId }) => {
       const resp = await withRetry(
         () =>
           axios.post<WalletResponse>(
-            "https://functions.yandexcloud.net/d4ej7dr2gb17q1gjhunk",
+            "https://usermoneyget-production.up.railway.app/money",
             { userId }
           ),
         (r) => r != null && typeof (r as any)?.data?.money === "number",
@@ -272,9 +272,7 @@ const Shop: React.FC<Props> = ({ userId }) => {
                             clickable
                               ? "cursor-pointer hover:shadow-lg"
                               : "opacity-50 cursor-not-allowed"
-                          } ${
-                            isActive ? "" : "grayscale"
-                          } relative`}
+                          } ${isActive ? "" : "grayscale"} relative`}
                           onClick={() =>
                             clickable ? handleBuy(it) : undefined
                           }
