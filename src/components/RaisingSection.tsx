@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import EnergyReplenishment from "./EnergyReplenishment";
 
 // Локальные типы для избежания проблем с импортами
 interface Monster {
@@ -76,6 +77,7 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
   onMonsterSwitch,
   onImpactClick,
 }) => {
+  const [showEnergyModal, setShowEnergyModal] = useState(false);
   // Вычисления для enduranceIcon (иконка выносливости)
   const enduranceIcon = characteristics.find((c) => c.id === 10012)?.icon || "";
 
@@ -132,7 +134,10 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
             </span>
           )}
 
-          <button className="w-full mt-2 bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed">
+          <button
+            onClick={() => setShowEnergyModal(true)}
+            className="w-full mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded"
+          >
             Пополнить энергию
           </button>
         </div>
@@ -251,6 +256,9 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
           ))}
         </div>
       </div>
+      {showEnergyModal && (
+        <EnergyReplenishment onClose={() => setShowEnergyModal(false)} />
+      )}
     </div>
   );
 };

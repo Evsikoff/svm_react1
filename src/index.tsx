@@ -23,6 +23,7 @@ import Spinner from "./components/Spinner";
 import MobileMainMenu from "./components/MobileMainMenu";
 import DesktopMenu from "./components/DesktopMenu";
 import CompositeRoomRenderer from "./components/CompositeRoomRenderer";
+import EnergyReplenishment from "./components/EnergyReplenishment";
 
 // Типы
 import {
@@ -79,6 +80,7 @@ const App: React.FC = () => {
 
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [showEnergyModal, setShowEnergyModal] = useState<boolean>(false);
 
   const [showRaisingInteraction, setShowRaisingInteraction] =
     useState<boolean>(false);
@@ -698,7 +700,10 @@ const App: React.FC = () => {
                   </span>
                 )}
 
-                <button className="w-full mt-2 bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed">
+                <button
+                  onClick={() => setShowEnergyModal(true)}
+                  className="w-full mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded"
+                >
                   Пополнить энергию
                 </button>
               </div>
@@ -812,6 +817,10 @@ const App: React.FC = () => {
         selectedMenuSequence === MENU_SEQUENCES.ACCOUNT && (
           <Account userId={userId} />
         )}
+
+      {showEnergyModal && (
+        <EnergyReplenishment onClose={() => setShowEnergyModal(false)} />
+      )}
 
       {/* Подвал с ссылкой на оферту */}
       <footer className="bg-gradient-to-r from-purple-500 to-orange-500 text-white py-2 mt-8">
