@@ -113,7 +113,7 @@ const Shop: React.FC<Props> = ({ userId }) => {
         const resp = await withRetry(
           () =>
             axios.post<ShopResponse>(
-              "https://functions.yandexcloud.net/d4eq0b2po3vrtvgqbori",
+              "https://itemshopget-production.up.railway.app/store-items",
               { userId },
               { timeout: 3000 }
             ),
