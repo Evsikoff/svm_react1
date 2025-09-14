@@ -617,6 +617,18 @@ const App: React.FC = () => {
         onToggleNotifications={() => setShowNotifications(!showNotifications)}
       />
 
+      {!showRaisingInteraction &&
+        selectedMenuSequence === MENU_SEQUENCES.RAISING && (
+          <div className="px-4 mt-2 md:mt-4">
+            <button
+              className="w-full md:w-1/2 bg-purple-400 hover:bg-purple-500 text-white px-4 py-2 rounded block mx-auto"
+              onClick={() => {}}
+            >
+              Купить еще одного монстра
+            </button>
+          </div>
+        )}
+
       {showNotifications && (
         <div className="bg-orange-100 p-4 shadow-md">Оповещения</div>
       )}
