@@ -15,7 +15,7 @@ export const BOOT_TASKS_ORDER: BootTask[] = [
 // API URLs
 export const API_URLS = {
   init: "https://init2-production.up.railway.app/execute",
-  mainmenu: "https://mainmenu-production-4496.up.railway.app/menuitems",
+  mainmenu: "https://mainmenu-production-3250.up.railway.app/menuitems",
   notifications:
     "https://notificationcounter-production.up.railway.app/notifications",
   monsters: "https://monsters-production.up.railway.app/monsters",

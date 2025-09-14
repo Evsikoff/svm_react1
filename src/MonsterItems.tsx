@@ -132,7 +132,7 @@ const MonsterItems: React.FC<MonsterItemsProps> = ({
       const response = await withInfiniteRetryOnTimeout(
         () =>
           axios.post<MonsterItemsResponse>(
-            "https://functions.yandexcloud.net/d4ei3ql908qcgv45ikmo",
+            "https://monstersitemget-production.up.railway.app/monsters",
             { userId }
           ),
         4000,
