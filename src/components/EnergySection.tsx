@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { IMAGES } from "../constants";
 import { formatTimer } from "../utils";
+import EnergyReplenishment from "./EnergyReplenishment";
 
 interface EnergySectionProps {
   teachEnergy: number;
@@ -11,6 +12,7 @@ const EnergySection: React.FC<EnergySectionProps> = ({
   teachEnergy,
   timer,
 }) => {
+  const [showEnergyModal, setShowEnergyModal] = useState(false);
   return (
     <div className="flex flex-col justify-between h-full items-center border border-gray-300 p-3 bg-purple-50 w-full md:w-auto md:min-w-[200px]">
       {/* Группа для иконки и значения энергии */}
@@ -29,9 +31,15 @@ const EnergySection: React.FC<EnergySectionProps> = ({
       )}
 
       {/* Кнопка */}
-      <button className="w-full mt-2 bg-gray-300 text-gray-500 px-4 py-2 rounded cursor-not-allowed">
+      <button
+        onClick={() => setShowEnergyModal(true)}
+        className="w-full mt-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded"
+      >
         Пополнить энергию
       </button>
+      {showEnergyModal && (
+        <EnergyReplenishment onClose={() => setShowEnergyModal(false)} />
+      )}
     </div>
   );
 };
