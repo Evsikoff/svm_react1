@@ -49,6 +49,7 @@ interface RaisingSectionProps {
   isMonsterLoading: boolean;
   onMonsterSwitch: (monsterId: number) => void;
   onImpactClick: (impact: MonsterImpact) => void;
+  userId: number | null;
 }
 
 const formatTimer = (timeInSeconds: number): string => {
@@ -76,6 +77,7 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
   isMonsterLoading,
   onMonsterSwitch,
   onImpactClick,
+  userId,
 }) => {
   const [showEnergyModal, setShowEnergyModal] = useState(false);
   // Вычисления для enduranceIcon (иконка выносливости)
@@ -257,7 +259,10 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
         </div>
       </div>
       {showEnergyModal && (
-        <EnergyReplenishment onClose={() => setShowEnergyModal(false)} />
+        <EnergyReplenishment
+          onClose={() => setShowEnergyModal(false)}
+          userId={userId}
+        />
       )}
     </div>
   );

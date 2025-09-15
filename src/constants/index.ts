@@ -20,6 +20,8 @@ export const API_URLS = {
     "https://notificationcounter-production.up.railway.app/notifications",
   monsters: "https://monsters-production.up.railway.app/monsters",
   teachenergy: "https://userteachenergy-production.up.railway.app/teachenergy",
+  teachenergybarterenable:
+    "https://teachenergybarterenable-production.up.railway.app/teachenergybarterenable",
   competitionenergy: "https://functions.yandexcloud.net/d4e83k58k32gf9ibt1jt",
   arenamonsters: "https://functions.yandexcloud.net/d4es67buap1fl8ad3sp8",
   characteristics:
