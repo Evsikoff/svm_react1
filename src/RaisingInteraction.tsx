@@ -1,4 +1,5 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
+import { useYandexFullscreenAd } from "./hooks/useYandexFullscreenAd";
 
 interface CharacteristicChange {
   characteristicsid: number;
@@ -51,6 +52,7 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
   onClose,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { showAd } = useYandexFullscreenAd();
 
   // единые классы ширины для всех основных блоков
   const commonWidth = "w-full max-w-[92%] md:max-w-[80%] lg:max-w-[75%]";
@@ -60,6 +62,10 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     if (videoRef.current) videoRef.current.volume = 0.2;
   }, []);
+
+  const handleClose = useCallback(() => {
+    void showAd().then(onClose);
+  }, [showAd, onClose]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200 p-2 sm:p-4">
@@ -276,7 +282,7 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
 
       <div className="flex justify-center">
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="bg-purple-500 text-white px-5 py-2 rounded"
         >
           Закрыть
