@@ -1,3 +1,4 @@
+// RaisingInteraction.tsx
 import React, { useRef, useEffect, useCallback } from "react";
 import { useYandexFullscreenAd } from "./hooks/useYandexFullscreenAd";
 
@@ -87,20 +88,15 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
 
     // Для десктопов показываем рекламу перед закрытием
     if (isDesktop) {
-      console.log("Desktop detected - attempting to show ad", {
-        isReady,
-        yaContext: !!window.Ya?.Context,
-        advManager: !!window.Ya?.Context?.AdvManager,
-      });
-
+      console.log("Обнаружен десктоп — попытка показа рекламы", { isReady });
       try {
         await showAd();
-        console.log("Ad promise resolved, closing interaction");
+        console.log("Реклама успешно показана");
       } catch (error) {
-        console.error("Error showing ad:", error);
+        console.error("Ошибка при показе рекламы:", error);
       }
     } else {
-      console.log("Mobile device - skipping ad");
+      console.log("Мобильное устройство — пропуск рекламы");
     }
 
     // В любом случае закрываем взаимодействие
