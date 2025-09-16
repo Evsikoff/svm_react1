@@ -1,4 +1,3 @@
-// useYandexFullscreenAd.ts
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const SCRIPT_SRC = "https://yandex.ru/ads/system/context.js";
@@ -42,16 +41,18 @@ export const useYandexFullscreenAd = () => {
   // Загрузка скрипта
   useEffect(() => {
     if (!isDesktopDevice() || typeof window === "undefined") {
+      console.log(
+        "Пропуск загрузки скрипта: мобильное устройство или серверный рендеринг"
+      );
       return;
     }
 
-    // Проверяем, загружен ли скрипт
     if (document.querySelector(`script[src="${SCRIPT_SRC}"]`)) {
       setIsScriptLoaded(true);
+      console.log("Скрипт Яндекс РСЯ уже загружен");
       return;
     }
 
-    // Инициализируем yaContextCb до загрузки скрипта
     window.yaContextCb = window.yaContextCb || [];
 
     const script = document.createElement("script");
@@ -59,12 +60,12 @@ export const useYandexFullscreenAd = () => {
     script.async = true;
 
     script.onload = () => {
-      console.log("Yandex Ads script loaded");
+      console.log("Скрипт Яндекс РСЯ загружен");
       setIsScriptLoaded(true);
     };
 
     script.onerror = (error) => {
-      console.error("Failed to load Yandex Ads script:", error);
+      console.error("Ошибка загрузки скрипта Яндекс РСЯ:", error);
     };
 
     document.head.appendChild(script);
@@ -74,7 +75,7 @@ export const useYandexFullscreenAd = () => {
     };
   }, []);
 
-  // Инициализация рекламного менеджера после загрузки скрипта
+  // Инициализация рекламного менеджера
   useEffect(() => {
     if (!isScriptLoaded || !isDesktopDevice() || initAttemptedRef.current) {
       return;
@@ -82,30 +83,30 @@ export const useYandexFullscreenAd = () => {
 
     const initializeAdManager = () => {
       if (window.Ya?.Context?.AdvManager) {
-        console.log("Ya.Context.AdvManager is available");
+        console.log("Ya.Context.AdvManager доступен");
         initAttemptedRef.current = true;
 
-        // Проверяем, разрешена ли реклама
         if (window.Ya.Context.AdvManager.isAllowed?.()) {
-          console.log("Реклама разрешена на этой странице");
+          console.log("Реклама разрешена на странице");
         } else {
           console.warn(
-            "Реклама заблокирована. Возможные причины: не HTTPS, localhost, сайт не прошел модерацию в РСЯ или блокировка браузером."
+            "Реклама заблокирована. Возможные причины: не HTTPS, localhost, " +
+              "сайт не прошел модерацию в РСЯ, блокировка браузером или отсутствие инвентаря. " +
+              "Текущий URL: " +
+              window.location.href
           );
         }
       } else {
-        console.log("Ya.Context.AdvManager not available yet, will retry");
+        console.log("Ya.Context.AdvManager недоступен, повторная попытка");
       }
     };
 
-    // Пробуем инициализировать сразу
     if (window.Ya?.Context?.AdvManager) {
       initializeAdManager();
     } else {
-      // Если не готово, добавляем в очередь callbacks
       window.yaContextCb = window.yaContextCb || [];
       window.yaContextCb.push(() => {
-        console.log("Initializing from yaContextCb");
+        console.log("Инициализация через yaContextCb");
         initializeAdManager();
       });
     }
@@ -114,7 +115,7 @@ export const useYandexFullscreenAd = () => {
   const showAd = useCallback((): Promise<void> => {
     return new Promise((resolve, reject) => {
       if (!isDesktopDevice()) {
-        console.log("Пропуск рекламы — мобильное устройство");
+        console.log("Пропуск рекламы: мобильное устройство");
         resolve();
         return;
       }
@@ -127,9 +128,11 @@ export const useYandexFullscreenAd = () => {
 
       if (!window.Ya?.Context?.AdvManager?.isAllowed?.()) {
         console.warn(
-          "Пропуск рекламы — isAllowed() вернул false. Проверьте HTTPS, модерацию сайта в РСЯ или настройки браузера."
+          "Пропуск рекламы: isAllowed() вернул false. Проверьте HTTPS, модерацию сайта в РСЯ, " +
+            "настройки браузера или наличие инвентаря. URL: " +
+            window.location.href
         );
-        resolve(); // Или reject(new Error("Реклама не разрешена")) для обработки как ошибки
+        reject(new Error("Реклама не разрешена"));
         return;
       }
 
@@ -147,7 +150,7 @@ export const useYandexFullscreenAd = () => {
 
       const timeoutId = setTimeout(() => {
         completeAdDisplay("таймаут", true);
-      }, 5000); // Увеличьте до 5000 мс для большего времени ожидания
+      }, 5000);
 
       const attemptShowAd = () => {
         try {

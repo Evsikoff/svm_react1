@@ -1,4 +1,3 @@
-// RaisingInteraction.tsx
 import React, { useRef, useEffect, useCallback } from "react";
 import { useYandexFullscreenAd } from "./hooks/useYandexFullscreenAd";
 
@@ -56,42 +55,54 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
   const { showAd, isDesktop, isReady } = useYandexFullscreenAd();
   const [isClosing, setIsClosing] = React.useState(false);
 
-  // Единые классы ширины для всех основных блоков
   const commonWidth = "w-full max-w-[92%] md:max-w-[80%] lg:max-w-[75%]";
 
   useEffect(() => {
-    // Прокрутка в самый верх при открытии
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 
-    // Устанавливаем громкость видео
     if (videoRef.current) {
       videoRef.current.volume = 0.2;
     }
 
-    // Логируем состояние рекламы
+    console.log("RaisingInteraction props:", {
+      videoUrl,
+      text,
+      characteristicsChanges,
+      inventoryItems,
+      itemEffects,
+      itemBonuses,
+    });
+
     console.log("RaisingInteraction mounted. Ad state:", {
       isDesktop,
       isReady,
       yaContext: !!window.Ya?.Context,
       advManager: !!window.Ya?.Context?.AdvManager,
     });
-  }, [isDesktop, isReady]);
+  }, [
+    isDesktop,
+    isReady,
+    videoUrl,
+    text,
+    characteristicsChanges,
+    inventoryItems,
+    itemEffects,
+    itemBonuses,
+  ]);
 
   const handleClose = useCallback(async () => {
-    // Предотвращаем множественные нажатия
     if (isClosing) {
-      console.log("Already closing, ignoring click");
+      console.log("Уже закрывается, игнорируем клик");
       return;
     }
 
     setIsClosing(true);
 
-    // Для десктопов показываем рекламу перед закрытием
     if (isDesktop) {
       console.log("Обнаружен десктоп — попытка показа рекламы", { isReady });
       try {
         await showAd();
-        console.log("Реклама успешно показана");
+        console.log("Реклама успешно отрендерена и закрыта");
       } catch (error) {
         console.error("Ошибка при показе рекламы:", error);
       }
@@ -99,87 +110,114 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
       console.log("Мобильное устройство — пропуск рекламы");
     }
 
-    // В любом случае закрываем взаимодействие
     onClose();
+    setIsClosing(false);
   }, [showAd, isDesktop, isReady, onClose, isClosing]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200 p-2 sm:p-4">
-      {/* Заголовок */}
       <div className="bg-gradient-to-r from-purple-500 to-orange-500 text-white text-2xl sm:text-3xl font-handwritten text-center py-2 mb-4">
         Воспитательное взаимодействие
       </div>
 
-      {/* Видео */}
-      <div className="flex justify-center mb-4">
-        <div className={commonWidth}>
-          <video
-            ref={videoRef}
-            className="w-full h-auto rounded-md shadow-md"
-            src={videoUrl}
-            autoPlay
-            playsInline
-            preload="auto"
-            muted={false}
-            controls={false}
-            onEnded={(e) => {
-              const v = e.target as HTMLVideoElement;
-              v.currentTime = v.duration;
-            }}
-          />
+      {videoUrl ? (
+        <div className="flex justify-center mb-4">
+          <div className={commonWidth}>
+            <video
+              ref={videoRef}
+              className="w-full h-auto rounded-md shadow-md"
+              src={videoUrl}
+              autoPlay
+              playsInline
+              preload="auto"
+              muted={false}
+              controls={false}
+              onEnded={(e) => {
+                const v = e.target as HTMLVideoElement;
+                v.currentTime = v.duration;
+              }}
+            />
+          </div>
         </div>
-      </div>
-
-      {/* Текст взаимодействия */}
-      <div className="flex justify-center mb-4">
-        <div
-          className={`bg-purple-100 p-4 border border-gray-300 shadow-md ${commonWidth}`}
-        >
-          <p className="text-base sm:text-lg font-bold text-purple-800">
-            {text}
-          </p>
+      ) : (
+        <div className="flex justify-center mb-4">
+          <div className={commonWidth}>
+            <p className="text-red-600 text-center">Видео недоступно</p>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Таблица изменений характеристик */}
-      <div className="flex justify-center mb-4">
-        <div
-          className={`bg-purple-100 p-2 sm:p-4 border border-gray-300 shadow-md ${commonWidth} overflow-x-auto`}
-        >
-          <table className="w-full min-w-[260px]">
-            <tbody>
-              {characteristicsChanges.map((change) => (
-                <tr
-                  key={change.characteristicsid}
-                  className="border-b border-gray-300"
-                >
-                  <td className="py-2 px-3 sm:px-4 break-words text-xs xs:text-sm sm:text-base">
-                    {change.name}
-                  </td>
-                  <td
-                    className={`py-2 px-3 sm:px-4 text-right ${
-                      change.amount >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
+      {text ? (
+        <div className="flex justify-center mb-4">
+          <div
+            className={`bg-purple-100 p-4 border border-gray-300 shadow-md ${commonWidth}`}
+          >
+            <p className="text-base sm:text-lg font-bold text-purple-800">
+              {text}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex justify-center mb-4">
+          <div
+            className={`bg-purple-100 p-4 border border-gray-300 shadow-md ${commonWidth}`}
+          >
+            <p className="text-red-600 text-center">
+              Текст взаимодействия отсутствует
+            </p>
+          </div>
+        </div>
+      )}
+
+      {characteristicsChanges.length > 0 ? (
+        <div className="flex justify-center mb-4">
+          <div
+            className={`bg-purple-100 p-2 sm:p-4 border border-gray-300 shadow-md ${commonWidth} overflow-x-auto`}
+          >
+            <table className="w-full min-w-[260px]">
+              <tbody>
+                {characteristicsChanges.map((change) => (
+                  <tr
+                    key={change.characteristicsid}
+                    className="border-b border-gray-300"
                   >
-                    {Math.abs(change.amount)}
-                  </td>
-                  <td className="py-2 px-3 sm:px-4 text-right">
-                    <span
-                      className={
+                    <td className="py-2 px-3 sm:px-4 break-words text-xs xs:text-sm sm:text-base">
+                      {change.name}
+                    </td>
+                    <td
+                      className={`py-2 px-3 sm:px-4 text-right ${
                         change.amount >= 0 ? "text-green-600" : "text-red-600"
-                      }
+                      }`}
                     >
-                      {change.amount >= 0 ? "↑" : "↓"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      {Math.abs(change.amount)}
+                    </td>
+                    <td className="py-2 px-3 sm:px-4 text-right">
+                      <span
+                        className={
+                          change.amount >= 0 ? "text-green-600" : "text-red-600"
+                        }
+                      >
+                        {change.amount >= 0 ? "↑" : "↓"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex justify-center mb-4">
+          <div
+            className={`bg-purple-100 p-4 border border-gray-300 shadow-md ${commonWidth}`}
+          >
+            <p className="text-red-600 text-center">
+              Изменения характеристик отсутствуют
+            </p>
+          </div>
+        </div>
+      )}
 
-      {/* Изменения благодаря предметам монстра */}
       {itemEffects.length > 0 && (
         <div className="flex justify-center mb-4">
           <div
@@ -225,7 +263,6 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
         </div>
       )}
 
-      {/* Дополнительные бонусы от владения предметами */}
       {itemBonuses.length > 0 && (
         <div className="flex justify-center mb-4">
           <div
@@ -279,7 +316,6 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
         </div>
       )}
 
-      {/* Полученные предметы */}
       {inventoryItems.length > 0 && (
         <div className="flex justify-center mb-4">
           <div
@@ -321,7 +357,6 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
         </div>
       )}
 
-      {/* Кнопка закрытия */}
       <div className="flex justify-center">
         <button
           onClick={handleClose}
