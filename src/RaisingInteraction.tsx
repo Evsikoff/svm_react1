@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useCallback } from "react";
-import { useYandexFullscreenAd } from "./hooks/useYandexFullscreenAd";
 
 interface CharacteristicChange {
   characteristicsid: number;
@@ -52,8 +51,6 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
   onClose,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { showAd, isDesktop, isReady } = useYandexFullscreenAd();
-  const [isClosing, setIsClosing] = React.useState(false);
 
   const commonWidth = "w-full max-w-[92%] md:max-w-[80%] lg:max-w-[75%]";
 
@@ -72,16 +69,7 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
       itemEffects,
       itemBonuses,
     });
-
-    console.log("RaisingInteraction mounted. Ad state:", {
-      isDesktop,
-      isReady,
-      yaContext: !!window.Ya?.Context,
-      advManager: !!window.Ya?.Context?.AdvManager,
-    });
   }, [
-    isDesktop,
-    isReady,
     videoUrl,
     text,
     characteristicsChanges,
@@ -90,29 +78,9 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
     itemBonuses,
   ]);
 
-  const handleClose = useCallback(async () => {
-    if (isClosing) {
-      console.log("Уже закрывается, игнорируем клик");
-      return;
-    }
-
-    setIsClosing(true);
-
-    if (isDesktop) {
-      console.log("Обнаружен десктоп — попытка показа рекламы", { isReady });
-      try {
-        await showAd();
-        console.log("Реклама успешно отрендерена и закрыта");
-      } catch (error) {
-        console.error("Ошибка при показе рекламы:", error);
-      }
-    } else {
-      console.log("Мобильное устройство — пропуск рекламы");
-    }
-
+  const handleClose = useCallback(() => {
     onClose();
-    setIsClosing(false);
-  }, [showAd, isDesktop, isReady, onClose, isClosing]);
+  }, [onClose]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200 p-2 sm:p-4">
@@ -360,21 +328,9 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
       <div className="flex justify-center">
         <button
           onClick={handleClose}
-          disabled={isClosing}
-          className={`px-5 py-2 rounded transition-all duration-200 flex items-center gap-2 ${
-            isClosing
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-purple-500 hover:bg-purple-600 text-white"
-          }`}
+          className="px-5 py-2 rounded transition-all duration-200 flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white"
         >
-          {isClosing ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Закрытие...</span>
-            </>
-          ) : (
-            "Закрыть"
-          )}
+          Закрыть
         </button>
       </div>
     </div>
