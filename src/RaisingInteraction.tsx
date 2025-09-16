@@ -63,8 +63,9 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
     if (videoRef.current) videoRef.current.volume = 0.2;
   }, []);
 
-  const handleClose = useCallback(() => {
-    void showAd().then(onClose);
+  const handleClose = useCallback(async () => {
+    await showAd();
+    onClose();
   }, [showAd, onClose]);
 
   return (

@@ -13,6 +13,8 @@ declare global {
             blockId: string;
             type: string;
             platform: string;
+            onClose?: () => void;
+            onError?: () => void;
           }) => void;
         };
       };
@@ -64,27 +66,45 @@ export const useYandexFullscreenAd = () => {
 
     return new Promise<void>((resolve) => {
       let resolved = false;
+      let timeoutId: number | undefined;
+      let hasRendered = false;
+
       const finish = () => {
         if (!resolved) {
           resolved = true;
+          if (typeof timeoutId === "number") {
+            window.clearTimeout(timeoutId);
+          }
           resolve();
         }
       };
 
-      const timeoutId = window.setTimeout(finish, 3000);
+      timeoutId = window.setTimeout(() => {
+        if (!hasRendered) {
+          finish();
+        }
+      }, 3000);
 
       const renderAd = () => {
-        window.clearTimeout(timeoutId);
+        const advManagerRender = window.Ya?.Context?.AdvManager?.render;
+
+        if (typeof advManagerRender !== "function") {
+          return;
+        }
+
+        hasRendered = true;
         try {
-          window.Ya?.Context?.AdvManager?.render({
+          advManagerRender({
             blockId: BLOCK_ID,
             type: "fullscreen",
             platform: "desktop",
+            onClose: finish,
+            onError: finish,
           });
         } catch (error) {
           console.error("Не удалось отобразить рекламу Яндекса", error);
+          finish();
         }
-        finish();
       };
 
       if (window.Ya?.Context?.AdvManager) {
