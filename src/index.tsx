@@ -24,6 +24,7 @@ import MobileMainMenu from "./components/MobileMainMenu";
 import DesktopMenu from "./components/DesktopMenu";
 import CompositeRoomRenderer from "./components/CompositeRoomRenderer";
 import EnergyReplenishment from "./components/EnergyReplenishment";
+import YandexAdTest from "./components/YandexAdTest";
 
 // Типы
 import {

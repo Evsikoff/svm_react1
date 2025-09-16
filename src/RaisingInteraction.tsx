@@ -52,7 +52,7 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
   onClose,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { showAd, isDesktop } = useYandexFullscreenAd();
+  const { showAd, isDesktop, isReady } = useYandexFullscreenAd();
   const [isClosing, setIsClosing] = React.useState(false);
 
   // Единые классы ширины для всех основных блоков
@@ -61,12 +61,20 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
   useEffect(() => {
     // Прокрутка в самый верх при открытии
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    
+
     // Устанавливаем громкость видео
     if (videoRef.current) {
       videoRef.current.volume = 0.2;
     }
-  }, []);
+
+    // Логируем состояние рекламы
+    console.log("RaisingInteraction mounted. Ad state:", {
+      isDesktop,
+      isReady,
+      yaContext: !!window.Ya?.Context,
+      advManager: !!window.Ya?.Context?.AdvManager,
+    });
+  }, [isDesktop, isReady]);
 
   const handleClose = useCallback(async () => {
     // Предотвращаем множественные нажатия
@@ -79,20 +87,25 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
 
     // Для десктопов показываем рекламу перед закрытием
     if (isDesktop) {
-      console.log("Desktop detected - showing ad before close");
+      console.log("Desktop detected - attempting to show ad", {
+        isReady,
+        yaContext: !!window.Ya?.Context,
+        advManager: !!window.Ya?.Context?.AdvManager,
+      });
+
       try {
         await showAd();
-        console.log("Ad shown successfully, closing interaction");
+        console.log("Ad promise resolved, closing interaction");
       } catch (error) {
         console.error("Error showing ad:", error);
       }
     } else {
       console.log("Mobile device - skipping ad");
     }
-    
+
     // В любом случае закрываем взаимодействие
     onClose();
-  }, [showAd, isDesktop, onClose, isClosing]);
+  }, [showAd, isDesktop, isReady, onClose, isClosing]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200 p-2 sm:p-4">
@@ -123,7 +136,9 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
 
       {/* Текст взаимодействия */}
       <div className="flex justify-center mb-4">
-        <div className={`bg-purple-100 p-4 border border-gray-300 shadow-md ${commonWidth}`}>
+        <div
+          className={`bg-purple-100 p-4 border border-gray-300 shadow-md ${commonWidth}`}
+        >
           <p className="text-base sm:text-lg font-bold text-purple-800">
             {text}
           </p>
@@ -132,21 +147,32 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
 
       {/* Таблица изменений характеристик */}
       <div className="flex justify-center mb-4">
-        <div className={`bg-purple-100 p-2 sm:p-4 border border-gray-300 shadow-md ${commonWidth} overflow-x-auto`}>
+        <div
+          className={`bg-purple-100 p-2 sm:p-4 border border-gray-300 shadow-md ${commonWidth} overflow-x-auto`}
+        >
           <table className="w-full min-w-[260px]">
             <tbody>
               {characteristicsChanges.map((change) => (
-                <tr key={change.characteristicsid} className="border-b border-gray-300">
+                <tr
+                  key={change.characteristicsid}
+                  className="border-b border-gray-300"
+                >
                   <td className="py-2 px-3 sm:px-4 break-words text-xs xs:text-sm sm:text-base">
                     {change.name}
                   </td>
-                  <td className={`py-2 px-3 sm:px-4 text-right ${
-                    change.amount >= 0 ? "text-green-600" : "text-red-600"
-                  }`}>
+                  <td
+                    className={`py-2 px-3 sm:px-4 text-right ${
+                      change.amount >= 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
                     {Math.abs(change.amount)}
                   </td>
                   <td className="py-2 px-3 sm:px-4 text-right">
-                    <span className={change.amount >= 0 ? "text-green-600" : "text-red-600"}>
+                    <span
+                      className={
+                        change.amount >= 0 ? "text-green-600" : "text-red-600"
+                      }
+                    >
                       {change.amount >= 0 ? "↑" : "↓"}
                     </span>
                   </td>
@@ -160,7 +186,9 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
       {/* Изменения благодаря предметам монстра */}
       {itemEffects.length > 0 && (
         <div className="flex justify-center mb-4">
-          <div className={`bg-gradient-to-br from-cyan-50 to-teal-50 p-4 border border-cyan-300 shadow-md ${commonWidth}`}>
+          <div
+            className={`bg-gradient-to-br from-cyan-50 to-teal-50 p-4 border border-cyan-300 shadow-md ${commonWidth}`}
+          >
             <h2 className="text-lg sm:text-xl font-bold text-teal-700 mb-4 text-center border-b-2 border-teal-200 pb-2">
               Изменения в ходе воспитательного взаимодействия благодаря наличию
               у монстра некоторых предметов
@@ -177,7 +205,9 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
                       alt={effect.itemname}
                       className="w-12 h-12 object-contain rounded-lg bg-white/60 p-1 shadow-sm"
                       onError={(e) => {
-                        console.error(`Ошибка загрузки изображения предмета: ${effect.itemimage}`);
+                        console.error(
+                          `Ошибка загрузки изображения предмета: ${effect.itemimage}`
+                        );
                         e.currentTarget.src = "/fallback-item.png";
                       }}
                     />
@@ -202,7 +232,9 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
       {/* Дополнительные бонусы от владения предметами */}
       {itemBonuses.length > 0 && (
         <div className="flex justify-center mb-4">
-          <div className={`bg-gradient-to-br from-lime-50 to-emerald-50 p-4 border border-lime-300 shadow-md ${commonWidth}`}>
+          <div
+            className={`bg-gradient-to-br from-lime-50 to-emerald-50 p-4 border border-lime-300 shadow-md ${commonWidth}`}
+          >
             <h2 className="text-lg sm:text-xl font-bold text-lime-700 mb-4 text-center border-b-2 border-lime-200 pb-2">
               Дополнительные бонусы от владения предметами
             </h2>
@@ -218,7 +250,9 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
                       alt={bonus.itemname}
                       className="w-12 h-12 object-contain rounded-lg bg-white/60 p-1 shadow-sm"
                       onError={(e) => {
-                        console.error(`Ошибка загрузки изображения предмета: ${bonus.itemimage}`);
+                        console.error(
+                          `Ошибка загрузки изображения предмета: ${bonus.itemimage}`
+                        );
                         e.currentTarget.src = "/fallback-item.png";
                       }}
                     />
@@ -252,7 +286,9 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
       {/* Полученные предметы */}
       {inventoryItems.length > 0 && (
         <div className="flex justify-center mb-4">
-          <div className={`bg-purple-100 p-4 border border-gray-300 shadow-md ${commonWidth}`}>
+          <div
+            className={`bg-purple-100 p-4 border border-gray-300 shadow-md ${commonWidth}`}
+          >
             <h2 className="text-xl font-bold text-orange-600 mb-4 text-center">
               Полученные предметы
             </h2>
@@ -270,7 +306,9 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
                     alt={item.inventoryname}
                     className="w-24 h-24 mx-auto mb-2 object-contain"
                     onError={(e) => {
-                      console.error(`Ошибка загрузки изображения: ${item.inventoryimage}`);
+                      console.error(
+                        `Ошибка загрузки изображения: ${item.inventoryimage}`
+                      );
                       e.currentTarget.src = "/fallback-image.png";
                     }}
                   />
@@ -293,8 +331,8 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
           onClick={handleClose}
           disabled={isClosing}
           className={`px-5 py-2 rounded transition-all duration-200 flex items-center gap-2 ${
-            isClosing 
-              ? "bg-gray-400 cursor-not-allowed" 
+            isClosing
+              ? "bg-gray-400 cursor-not-allowed"
               : "bg-purple-500 hover:bg-purple-600 text-white"
           }`}
         >

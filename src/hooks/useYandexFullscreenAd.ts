@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const SCRIPT_SRC = "https://yandex.ru/ads/system/context.js";
 const BLOCK_ID = "R-A-17258459-2";
-const MOBILE_USER_AGENT_REGEX = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+const MOBILE_USER_AGENT_REGEX =
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
 
 declare global {
   interface Window {
@@ -13,7 +14,11 @@ declare global {
             blockId: string;
             type: string;
             platform: string;
+            onRender?: () => void;
+            onError?: (error: any) => void;
+            onClose?: () => void;
           }) => void;
+          isAllowed?: () => boolean;
         };
       };
     };
@@ -25,154 +30,182 @@ const isDesktopDevice = (): boolean => {
   if (typeof navigator === "undefined") {
     return false;
   }
-
   return !MOBILE_USER_AGENT_REGEX.test(navigator.userAgent);
 };
 
 export const useYandexFullscreenAd = () => {
-  const scriptLoadedRef = useRef(false);
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [isShowingAd, setIsShowingAd] = useState(false);
+  const initAttemptedRef = useRef(false);
 
-  const ensureScript = useCallback((): Promise<void> => {
-    if (typeof window === "undefined" || typeof document === "undefined") {
-      return Promise.resolve();
+  // Загрузка скрипта
+  useEffect(() => {
+    if (!isDesktopDevice() || typeof window === "undefined") {
+      return;
     }
 
-    // Инициализируем yaContextCb
+    // Проверяем, загружен ли скрипт
+    if (document.querySelector(`script[src="${SCRIPT_SRC}"]`)) {
+      setIsScriptLoaded(true);
+      return;
+    }
+
+    // Инициализируем yaContextCb до загрузки скрипта
     window.yaContextCb = window.yaContextCb || [];
 
-    // Если скрипт уже загружен, возвращаем успех
-    if (scriptLoadedRef.current || document.querySelector(`script[src="${SCRIPT_SRC}"]`)) {
-      scriptLoadedRef.current = true;
-      return Promise.resolve();
-    }
+    const script = document.createElement("script");
+    script.src = SCRIPT_SRC;
+    script.async = true;
 
-    // Возвращаем промис загрузки скрипта
-    return new Promise<void>((resolve) => {
-      const script = document.createElement("script");
-      script.src = SCRIPT_SRC;
-      script.async = true;
-      
-      script.onload = () => {
-        scriptLoadedRef.current = true;
-        console.log("Yandex Ads script loaded successfully");
-        resolve();
-      };
-      
-      script.onerror = () => {
-        console.error("Failed to load Yandex Ads script");
-        resolve(); // Резолвим даже при ошибке, чтобы не блокировать закрытие
-      };
-      
-      document.head.appendChild(script);
-    });
+    script.onload = () => {
+      console.log("Yandex Ads script loaded");
+      setIsScriptLoaded(true);
+    };
+
+    script.onerror = (error) => {
+      console.error("Failed to load Yandex Ads script:", error);
+    };
+
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup если необходимо
+    };
   }, []);
 
+  // Инициализация рекламного менеджера после загрузки скрипта
   useEffect(() => {
-    // Загружаем скрипт только для десктопов при монтировании компонента
-    if (isDesktopDevice()) {
-      ensureScript();
-    }
-  }, [ensureScript]);
-
-  const showAd = useCallback(async (): Promise<void> => {
-    // Если уже показываем рекламу, просто возвращаем резолв
-    if (isShowingAd) {
-      console.log("Ad is already being shown, skipping...");
-      return Promise.resolve();
+    if (!isScriptLoaded || !isDesktopDevice() || initAttemptedRef.current) {
+      return;
     }
 
-    // Для мобильных устройств сразу резолвим
-    if (!isDesktopDevice() || typeof window === "undefined") {
-      console.log("Skipping ad - not a desktop device");
-      return Promise.resolve();
-    }
+    const initializeAdManager = () => {
+      if (window.Ya?.Context?.AdvManager) {
+        console.log("Ya.Context.AdvManager is available");
+        initAttemptedRef.current = true;
 
-    // Устанавливаем флаг, что начали показ рекламы
-    setIsShowingAd(true);
-
-    try {
-      // Убеждаемся, что скрипт загружен
-      await ensureScript();
-
-      return new Promise<void>((resolve) => {
-        // Устанавливаем короткий таймаут для тестовой среды
-        const timeoutMs = window.location.hostname === 'localhost' || 
-                         window.location.hostname.includes('codesandbox') ||
-                         window.location.hostname.includes('stackblitz') ? 500 : 3000;
-
-        const timeoutId = window.setTimeout(() => {
-          console.log("Ad display timeout - proceeding without ad");
-          setIsShowingAd(false);
-          resolve();
-        }, timeoutMs);
-
-        const finishWithAd = () => {
-          window.clearTimeout(timeoutId);
-          console.log("Ad display completed");
-          setIsShowingAd(false);
-          resolve();
-        };
-
-        try {
-          if (window.Ya?.Context?.AdvManager) {
-            console.log("Attempting to show Yandex fullscreen ad");
-            
-            // Показываем рекламу
-            window.Ya.Context.AdvManager.render({
-              blockId: BLOCK_ID,
-              type: "fullscreen",
-              platform: "desktop"
-            });
-            
-            // Даем небольшое время на отображение
-            setTimeout(finishWithAd, 100);
-          } else {
-            console.log("Ya.Context.AdvManager not available, adding to callback queue");
-            
-            // Если API еще не готово, добавляем в очередь
-            window.yaContextCb = window.yaContextCb || [];
-            
-            // Создаем одноразовый callback
-            const adCallback = () => {
-              console.log("Showing ad from callback queue");
-              try {
-                window.Ya?.Context?.AdvManager?.render({
-                  blockId: BLOCK_ID,
-                  type: "fullscreen",
-                  platform: "desktop"
-                });
-              } catch (error) {
-                console.error("Error showing ad from callback:", error);
-              }
-              
-              // Удаляем себя из очереди после выполнения
-              const index = window.yaContextCb?.indexOf(adCallback);
-              if (index !== undefined && index > -1) {
-                window.yaContextCb?.splice(index, 1);
-              }
-              
-              finishWithAd();
-            };
-            
-            window.yaContextCb.push(adCallback);
-          }
-        } catch (error) {
-          console.error("Error showing Yandex ad:", error);
-          finishWithAd();
+        // Проверяем, разрешена ли реклама
+        if (window.Ya.Context.AdvManager.isAllowed?.()) {
+          console.log("Ads are allowed on this page");
+        } else {
+          console.warn("Ads might be blocked on this page");
         }
-      });
-    } finally {
-      // Гарантируем сброс флага в случае ошибки
-      setTimeout(() => {
-        setIsShowingAd(false);
-      }, 5000);
-    }
-  }, [ensureScript, isShowingAd]);
+      } else {
+        console.log("Ya.Context.AdvManager not available yet, will retry");
+      }
+    };
 
-  return { 
-    showAd, 
+    // Пробуем инициализировать сразу
+    if (window.Ya?.Context?.AdvManager) {
+      initializeAdManager();
+    } else {
+      // Если не готово, добавляем в очередь callbacks
+      window.yaContextCb = window.yaContextCb || [];
+      window.yaContextCb.push(() => {
+        console.log("Initializing from yaContextCb");
+        initializeAdManager();
+      });
+    }
+  }, [isScriptLoaded]);
+
+  const showAd = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      // Для мобильных устройств сразу резолвим
+      if (!isDesktopDevice()) {
+        console.log("Skipping ad - mobile device");
+        resolve();
+        return;
+      }
+
+      // Проверяем, не показываем ли уже рекламу
+      if (isShowingAd) {
+        console.log("Ad is already being shown");
+        resolve();
+        return;
+      }
+
+      setIsShowingAd(true);
+
+      // Функция для завершения показа рекламы
+      const completeAdDisplay = (reason: string) => {
+        console.log(`Ad display completed: ${reason}`);
+        setIsShowingAd(false);
+        resolve();
+      };
+
+      // Устанавливаем таймаут
+      const timeoutId = setTimeout(() => {
+        completeAdDisplay("timeout");
+      }, 3000);
+
+      // Функция для попытки показа рекламы
+      const attemptShowAd = () => {
+        try {
+          if (!window.Ya?.Context?.AdvManager) {
+            console.warn("Ya.Context.AdvManager not available");
+            completeAdDisplay("no AdvManager");
+            return;
+          }
+
+          console.log("Calling Ya.Context.AdvManager.render()");
+
+          // Вызываем render с callbacks
+          window.Ya.Context.AdvManager.render({
+            blockId: BLOCK_ID,
+            type: "fullscreen",
+            platform: "desktop",
+            onRender: () => {
+              console.log("Ad rendered successfully");
+              clearTimeout(timeoutId);
+              // Даем время на показ рекламы
+              setTimeout(() => completeAdDisplay("rendered"), 1000);
+            },
+            onError: (error: any) => {
+              console.error("Ad render error:", error);
+              clearTimeout(timeoutId);
+              completeAdDisplay("error");
+            },
+            onClose: () => {
+              console.log("Ad closed by user");
+              clearTimeout(timeoutId);
+              completeAdDisplay("closed");
+            },
+          });
+
+          // Если callbacks не сработали через 500мс, считаем что реклама показана
+          setTimeout(() => {
+            if (isShowingAd) {
+              clearTimeout(timeoutId);
+              completeAdDisplay("assumed shown");
+            }
+          }, 500);
+        } catch (error) {
+          console.error("Error calling render:", error);
+          clearTimeout(timeoutId);
+          completeAdDisplay("exception");
+        }
+      };
+
+      // Пробуем показать рекламу
+      if (window.Ya?.Context?.AdvManager) {
+        attemptShowAd();
+      } else if (isScriptLoaded) {
+        // Если скрипт загружен, но AdvManager еще не готов, ждем
+        window.yaContextCb = window.yaContextCb || [];
+        window.yaContextCb.push(() => {
+          attemptShowAd();
+        });
+      } else {
+        // Если скрипт еще не загружен
+        console.warn("Script not loaded yet");
+        completeAdDisplay("script not loaded");
+      }
+    });
+  }, [isShowingAd, isScriptLoaded]);
+
+  return {
+    showAd,
     isDesktop: isDesktopDevice(),
-    isShowingAd // Экспортируем состояние для отладки
+    isReady: isScriptLoaded && !!window.Ya?.Context?.AdvManager,
   };
 };
