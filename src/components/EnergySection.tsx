@@ -6,13 +6,11 @@ import EnergyReplenishment from "./EnergyReplenishment";
 interface EnergySectionProps {
   teachEnergy: number;
   timer: number;
-  userId: number | null;
 }
 
 const EnergySection: React.FC<EnergySectionProps> = ({
   teachEnergy,
   timer,
-  userId,
 }) => {
   const [showEnergyModal, setShowEnergyModal] = useState(false);
   return (
@@ -40,10 +38,7 @@ const EnergySection: React.FC<EnergySectionProps> = ({
         Пополнить энергию
       </button>
       {showEnergyModal && (
-        <EnergyReplenishment
-          onClose={() => setShowEnergyModal(false)}
-          userId={userId}
-        />
+        <EnergyReplenishment onClose={() => setShowEnergyModal(false)} />
       )}
     </div>
   );
