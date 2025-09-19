@@ -8,6 +8,7 @@ import React, {
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import axios from "axios";
 
 // Существующие компоненты
 import RaisingInteraction from "./RaisingInteraction";
@@ -25,11 +26,13 @@ import DesktopMenu from "./components/DesktopMenu";
 import CompositeRoomRenderer from "./components/CompositeRoomRenderer";
 import EnergyReplenishment from "./components/EnergyReplenishment";
 import YandexAdTest from "./components/YandexAdTest";
+import MonsterTypeSelector from "./components/MonsterTypeSelector";
 
 // Типы
 import {
   MenuItem,
   Monster,
+  MonsterTypeInfo,
   MonsterCharacteristic,
   MonsterImpact,
   RoomItem,
@@ -49,6 +52,19 @@ import { formatTimer, withInfiniteRetryAndTimeout } from "./utils";
 
 const YANDEX_CLIENT_ID = "3d7ec2c7ceb34ed59b445d7fb152ac9f";
 const YANDEX_CLIENT_SECRET = "1d85ca9e132b4e419c960c38832f8d71";
+
+type MonsterTypeApiItem = {
+  number?: number | string;
+  name?: string;
+  image?: string;
+  price?: number | string;
+  activity?: boolean | string | number;
+  [key: string]: unknown;
+};
+
+type MonsterTypesResponse = {
+  monstertypes?: MonsterTypeApiItem[];
+};
 
 const App: React.FC = () => {
   // ---- state ----
@@ -82,6 +98,13 @@ const App: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [showEnergyModal, setShowEnergyModal] = useState<boolean>(false);
+
+  const [showMonsterTypeSelector, setShowMonsterTypeSelector] =
+    useState<boolean>(false);
+  const [monsterTypes, setMonsterTypes] = useState<MonsterTypeInfo[]>([]);
+  const [monsterTypesLoading, setMonsterTypesLoading] =
+    useState<boolean>(false);
+  const [monsterTypesError, setMonsterTypesError] = useState<string>("");
 
   const [showRaisingInteraction, setShowRaisingInteraction] =
     useState<boolean>(false);
@@ -164,6 +187,88 @@ const App: React.FC = () => {
     setImpacts(impactsRes.monsterimpacts || []);
   }, [selectedMonsterId, apiService]);
 
+  const loadMonsterTypes = useCallback(async () => {
+    setMonsterTypesLoading(true);
+    setMonsterTypesError("");
+    setMonsterTypes([]);
+    try {
+      const response = await axios.get<MonsterTypesResponse>(
+        "https://monstertypesget-production.up.railway.app/monstertypes",
+        { timeout: 5000 }
+      );
+      const rawTypes = response.data?.monstertypes;
+      if (!Array.isArray(rawTypes)) {
+        throw new Error("Некорректный ответ сервера");
+      }
+      const prepared = rawTypes
+        .map((item, index) => {
+          if (!item || typeof item !== "object") {
+            return null;
+          }
+          const candidate = item as MonsterTypeApiItem;
+          const resolvedNumber =
+            typeof candidate.number === "number"
+              ? candidate.number
+              : Number(candidate.number ?? Number.NaN);
+          const resolvedPrice =
+            typeof candidate.price === "number"
+              ? candidate.price
+              : Number(candidate.price ?? Number.NaN);
+          const resolvedName =
+            typeof candidate.name === "string"
+              ? candidate.name.trim()
+              : undefined;
+          const resolvedImage =
+            typeof candidate.image === "string"
+              ? candidate.image.trim()
+              : undefined;
+
+          let resolvedActivity = true;
+          if (typeof candidate.activity === "boolean") {
+            resolvedActivity = candidate.activity;
+          } else if (typeof candidate.activity === "string") {
+            resolvedActivity = candidate.activity.toLowerCase() !== "false";
+          } else if (typeof candidate.activity === "number") {
+            resolvedActivity = candidate.activity !== 0;
+          }
+
+          if (
+            !resolvedName ||
+            !resolvedImage ||
+            !Number.isFinite(resolvedPrice)
+          ) {
+            return null;
+          }
+
+          return {
+            number: Number.isFinite(resolvedNumber)
+              ? resolvedNumber
+              : index + 1,
+            name: resolvedName,
+            image: resolvedImage,
+            price: resolvedPrice,
+            activity: resolvedActivity,
+          } satisfies MonsterTypeInfo;
+        })
+        .filter((item): item is MonsterTypeInfo => item != null);
+
+      if (!prepared.length) {
+        throw new Error("Типы монстров временно недоступны");
+      }
+
+      const sorted = prepared.slice().sort((a, b) => a.number - b.number);
+      setMonsterTypes(sorted);
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Не удалось загрузить типы монстров";
+      setMonsterTypesError(message);
+    } finally {
+      setMonsterTypesLoading(false);
+    }
+  }, []);
+
   const loadMonsters = useCallback(async () => {
     if (!monstersId.length) return;
     const monstersRes = await apiService.getMonsters(monstersId);
@@ -202,6 +307,19 @@ const App: React.FC = () => {
     },
     [loadTeachEnergy, loadMonsters]
   );
+
+  const handleOpenMonsterSelector = useCallback(() => {
+    setShowMonsterTypeSelector(true);
+    if (!monsterTypesLoading) {
+      loadMonsterTypes();
+    }
+  }, [loadMonsterTypes, monsterTypesLoading]);
+
+  const handleRetryMonsterTypes = useCallback(() => {
+    if (!monsterTypesLoading) {
+      loadMonsterTypes();
+    }
+  }, [loadMonsterTypes, monsterTypesLoading]);
 
   // --- обработчик переключения монстра ---
   const handleMonsterSwitch = useCallback(
@@ -621,9 +739,17 @@ const App: React.FC = () => {
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.RAISING && (
           <div className="px-4 mt-2 md:mt-4">
-            <div className="w-full md:w-1/2 bg-gradient-to-r from-purple-400 to-purple-600 text-white px-4 py-3 rounded-lg shadow-md mx-auto text-center font-semibold">
+            <button
+              type="button"
+              onClick={handleOpenMonsterSelector}
+              className="mx-auto block w-full rounded-lg bg-gradient-to-r from-purple-400 to-purple-600 px-4 py-3 text-center font-semibold text-white shadow-md transition duration-200 hover:from-purple-500 hover:to-purple-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 md:w-1/2 disabled:cursor-wait disabled:opacity-90"
+              disabled={monsterTypesLoading}
+              aria-haspopup="dialog"
+              aria-expanded={showMonsterTypeSelector}
+              aria-controls="monster-type-selector"
+            >
               Купить еще одного монстра
-            </div>
+            </button>
           </div>
         )}
 
@@ -827,6 +953,16 @@ const App: React.FC = () => {
         selectedMenuSequence === MENU_SEQUENCES.ACCOUNT && (
           <Account userId={userId} />
         )}
+
+      {showMonsterTypeSelector && (
+        <MonsterTypeSelector
+          types={monsterTypes}
+          loading={monsterTypesLoading}
+          error={monsterTypesError}
+          onClose={() => setShowMonsterTypeSelector(false)}
+          onRetry={handleRetryMonsterTypes}
+        />
+      )}
 
       {showEnergyModal && (
         <EnergyReplenishment onClose={() => setShowEnergyModal(false)} />

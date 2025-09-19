@@ -29,6 +29,14 @@ export interface Monster {
   index: boolean;
 }
 
+export interface MonsterTypeInfo {
+  number: number;
+  name: string;
+  image: string;
+  price: number;
+  activity: boolean;
+}
+
 export interface MonstersResponse {
   monsters: Monster[];
 }
