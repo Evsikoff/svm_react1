@@ -1,4 +1,6 @@
+
 import React, { useEffect } from "react";
+
 
 interface CompetitionEnergyReplenishmentProps {
   onClose: () => void;
@@ -22,6 +24,7 @@ const BADGES = [
 const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentProps> = ({
   onClose,
 }) => {
+
   useEffect(() => {
     const { overflow } = document.body.style;
     document.body.style.overflow = "hidden";
@@ -96,6 +99,7 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
                 Закрыть
               </button>
             </div>
+
           </div>
         </div>
       </div>
