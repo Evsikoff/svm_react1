@@ -959,6 +959,7 @@ const App: React.FC = () => {
           types={monsterTypes}
           loading={monsterTypesLoading}
           error={monsterTypesError}
+          userId={userId}
           onClose={() => setShowMonsterTypeSelector(false)}
           onRetry={handleRetryMonsterTypes}
         />
