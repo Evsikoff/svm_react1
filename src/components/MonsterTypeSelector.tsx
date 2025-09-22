@@ -1,21 +1,93 @@
-import React from "react";
+import React, { useState } from "react";
 import { MonsterTypeInfo } from "../types";
 
 type MonsterTypeSelectorProps = {
   types: MonsterTypeInfo[];
   loading: boolean;
   error: string;
+  userId: number | null;
   onClose: () => void;
   onRetry: () => void;
 };
+
+interface CreatePaymentLinkResponse {
+  paymentlink?: string | null;
+  errortext?: string | null;
+}
 
 const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
   types,
   loading,
   error,
+  userId,
   onClose,
   onRetry,
 }) => {
+  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [dialogMessage, setDialogMessage] = useState<string | null>(null);
+
+  const isProcessing = processingId !== null;
+
+  const handleTypeSelection = async (type: MonsterTypeInfo) => {
+    if (!type.activity || isProcessing) {
+      return;
+    }
+
+    if (!userId) {
+      setDialogMessage("Ошибка: не удалось определить пользователя.");
+      return;
+    }
+
+    setProcessingId(type.number);
+
+    try {
+      const response = await fetch(
+        "https://paymentlinkget-production.up.railway.app/create-payment-link",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId,
+            invoicetypeId: type.number,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Не удалось создать ссылку на оплату (код ${response.status}).`
+        );
+      }
+
+      const data: CreatePaymentLinkResponse = await response.json();
+      const trimmedError = data.errortext?.trim();
+      if (trimmedError) {
+        setDialogMessage(trimmedError);
+        return;
+      }
+
+      const paymentLink = data.paymentlink?.trim();
+      if (paymentLink) {
+        window.location.href = paymentLink;
+        return;
+      }
+
+      setDialogMessage(
+        "Ссылка на оплату не была получена. Попробуйте повторить попытку позже."
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Произошла непредвиденная ошибка при создании ссылки на оплату.";
+      setDialogMessage(message);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
       <div
@@ -112,7 +184,9 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
                               ? "hover:-translate-y-1 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2"
                               : "cursor-not-allowed opacity-60 grayscale"
                           }`}
-                          disabled={!type.activity}
+                          disabled={!type.activity || isProcessing}
+                          onClick={() => handleTypeSelection(type)}
+                          aria-busy={processingId === type.number}
                         >
                           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-100/70 via-white to-orange-100/70">
                             <img
@@ -148,6 +222,11 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
                               </span>
                             </div>
                           </div>
+                          {processingId === type.number && (
+                            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70">
+                              <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+                            </div>
+                          )}
                         </button>
                       </div>
                     );
@@ -157,6 +236,23 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
             </>
           )}
         </div>
+
+        {dialogMessage && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+              <p className="text-base font-semibold text-purple-900">
+                {dialogMessage}
+              </p>
+              <button
+                type="button"
+                onClick={() => setDialogMessage(null)}
+                className="mt-6 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-orange-400 px-6 py-2 text-sm font-semibold text-white shadow transition hover:from-purple-600 hover:to-orange-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-purple-500"
+              >
+                ОК
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
