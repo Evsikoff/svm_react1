@@ -84,7 +84,10 @@ const CompetitionEnergy: React.FC<Props> = ({ userId }) => {
         </div>
       </div>
       {showReplenishment && (
-        <CompetitionEnergyReplenishment onClose={() => setShowReplenishment(false)} />
+        <CompetitionEnergyReplenishment
+          onClose={() => setShowReplenishment(false)}
+          userId={userId}
+        />
       )}
     </>
   );
