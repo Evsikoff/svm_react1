@@ -27,6 +27,7 @@ import CompositeRoomRenderer from "./components/CompositeRoomRenderer";
 import EnergyReplenishment from "./components/EnergyReplenishment";
 import YandexAdTest from "./components/YandexAdTest";
 import MonsterTypeSelector from "./components/MonsterTypeSelector";
+import SuccessScreen from "./SuccessScreen";
 
 // Типы
 import {
@@ -989,4 +990,6 @@ const App: React.FC = () => {
 };
 
 const root = createRoot(document.getElementById("root")!);
-root.render(<App />);
+const trimmedPath = window.location.pathname.replace(/\/+$/, "") || "/";
+const isSuccessScreen = trimmedPath.toLowerCase() === "/success";
+root.render(isSuccessScreen ? <SuccessScreen /> : <App />);
