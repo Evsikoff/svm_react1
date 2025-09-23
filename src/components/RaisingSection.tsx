@@ -41,6 +41,7 @@ interface RaisingSectionProps {
   selectedMonsterId: number | null;
   teachEnergy: number;
   timer: number;
+  userId: number | null;
   roomImage: string;
   monsterImage: string;
   roomItems: RoomItem[];
@@ -68,6 +69,7 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
   selectedMonsterId,
   teachEnergy,
   timer,
+  userId,
   roomImage,
   monsterImage,
   roomItems,
@@ -257,7 +259,10 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
         </div>
       </div>
       {showEnergyModal && (
-        <EnergyReplenishment onClose={() => setShowEnergyModal(false)} />
+        <EnergyReplenishment
+          onClose={() => setShowEnergyModal(false)}
+          userId={userId}
+        />
       )}
     </div>
   );

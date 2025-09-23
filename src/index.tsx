@@ -967,7 +967,10 @@ const App: React.FC = () => {
       )}
 
       {showEnergyModal && (
-        <EnergyReplenishment onClose={() => setShowEnergyModal(false)} />
+        <EnergyReplenishment
+          onClose={() => setShowEnergyModal(false)}
+          userId={userId}
+        />
       )}
 
       {/* Подвал с ссылкой на оферту */}
