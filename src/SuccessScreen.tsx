@@ -124,6 +124,11 @@ const SuccessScreen: React.FC = () => {
     };
   }, [stateId]);
 
+  const handleReloadClick = () => {
+    const baseUrl = `${window.location.origin}/`;
+    window.location.href = baseUrl;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200 flex items-center justify-center px-4 py-10">
       <div
@@ -174,7 +179,7 @@ const SuccessScreen: React.FC = () => {
             {showReload && (
               <button
                 type="button"
-                onClick={() => window.location.reload()}
+                onClick={handleReloadClick}
                 className="mx-auto block rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 px-6 py-3 text-base font-semibold text-white shadow-lg transition-transform duration-200 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2"
               >
                 Перезагрузить приложение
