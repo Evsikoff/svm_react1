@@ -10,18 +10,28 @@ interface CreatePaymentLinkResponse {
   errortext?: string | null;
 }
 
-const OPTIONS = [
+interface EnergyOption {
+  id: string;
+  label: string;
+  price: string;
+  icon: string;
+  invoiceTypeId: number;
+}
+
+const OPTIONS: EnergyOption[] = [
   {
     id: "ten",
     label: "Десять единиц энергии",
     price: "135 ₽",
     icon: "https://storage.yandexcloud.net/svm/img/averagenumberteacherenergy.png",
+    invoiceTypeId: 7,
   },
   {
     id: "ninety",
     label: "Девяносто единиц энергии",
     price: "990 ₽",
     icon: "https://storage.yandexcloud.net/svm/img/largenumberteachenergy.png",
+    invoiceTypeId: 8,
   },
 ];
 
@@ -38,6 +48,13 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
       return;
     }
 
+    const selectedOption = OPTIONS.find((option) => option.id === optionId);
+
+    if (!selectedOption) {
+      setDialogMessage("Выбранный вариант пополнения недоступен. Попробуйте другой.");
+      return;
+    }
+
     setActiveOptionId(optionId);
 
     try {
@@ -50,7 +67,7 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
           },
           body: JSON.stringify({
             userId,
-            invoicetypeId: 7,
+            invoicetypeId: selectedOption.invoiceTypeId,
           }),
         }
       );
