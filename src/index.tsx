@@ -10,6 +10,26 @@ import "./index.css";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import axios from "axios";
 
+type VKBridgeEventDetail = {
+  type: string;
+  data?: {
+    scheme?: string;
+    [key: string]: unknown;
+  };
+};
+
+type VKBridgeEvent = {
+  detail: VKBridgeEventDetail;
+};
+
+type VKBridgeSubscribeHandler = (event: VKBridgeEvent) => void;
+
+type VKBridgeInstance = {
+  send: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
+  subscribe: (handler: VKBridgeSubscribeHandler) => void;
+  unsubscribe: (handler: VKBridgeSubscribeHandler) => void;
+};
+
 // Существующие компоненты
 import RaisingInteraction from "./RaisingInteraction";
 import Arena from "./Arena";
@@ -127,6 +147,35 @@ const App: React.FC = () => {
 
   // НОВОЕ: Используем useRef для отслеживания текущего запроса монстра
   const currentLoadingMonsterRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const vkBridge = (window as Window & { vkBridge?: VKBridgeInstance })
+      .vkBridge;
+
+    if (!vkBridge) {
+      console.warn("VK Bridge is not available in the current environment");
+      return;
+    }
+
+    vkBridge
+      .send("VKWebAppInit")
+      .catch((error) => console.error("VK Bridge init error:", error));
+
+    const handleBridgeEvent: VKBridgeSubscribeHandler = ({
+      detail: { type, data },
+    }) => {
+      if (type === "VKWebAppUpdateConfig") {
+        const scheme = (data?.scheme as string | undefined) ?? "client_light";
+        document.body.setAttribute("scheme", scheme);
+      }
+    };
+
+    vkBridge.subscribe(handleBridgeEvent);
+
+    return () => {
+      vkBridge.unsubscribe(handleBridgeEvent);
+    };
+  }, []);
 
   // Api: СТАБИЛЬНЫЙ экземпляр на весь жизненный цикл компонента
   const apiService = useMemo(
