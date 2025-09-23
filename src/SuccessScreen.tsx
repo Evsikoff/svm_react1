@@ -94,10 +94,9 @@ const SuccessScreen: React.FC = () => {
 
     if (stateId === "1") {
       return {
-        textClassName:
-          "bg-gradient-to-r from-yellow-300 via-orange-400 to-pink-500 bg-clip-text text-transparent drop-shadow-md",
-        containerBorderClassName: "border-yellow-300",
-        showReload: true,
+        textClassName: "text-yellow-500 drop-shadow-md",
+        containerBorderClassName: "border-yellow-200",
+        showReload: false,
       };
     }
 
@@ -106,6 +105,15 @@ const SuccessScreen: React.FC = () => {
         textClassName: "text-green-600",
         containerBorderClassName: "border-green-300",
         showReload: false,
+      };
+    }
+
+    if (stateId === "3") {
+      return {
+        textClassName:
+          "bg-gradient-to-r from-yellow-300 via-orange-400 to-pink-500 bg-clip-text text-transparent drop-shadow-md",
+        containerBorderClassName: "border-yellow-300",
+        showReload: true,
       };
     }
 
