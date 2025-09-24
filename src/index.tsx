@@ -1004,7 +1004,7 @@ const App: React.FC = () => {
       {/* Остальные разделы */}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.ARENA && (
-          <Arena userId={userId} />
+          <Arena userId={userId} isVK={isVKEnvironment} />
         )}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.SHOP && (

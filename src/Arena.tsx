@@ -8,9 +8,10 @@ import CompetitionHistory from "./components/CompetitionHistory";
 
 interface ArenaProps {
   userId: number | null;
+  isVK?: boolean;
 }
 
-const Arena: React.FC<ArenaProps> = ({ userId }) => {
+const Arena: React.FC<ArenaProps> = ({ userId, isVK = false }) => {
   const [selectedMonsterId, setSelectedMonsterId] = useState<number | null>(
     null
   );
@@ -57,7 +58,7 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
         {/* На широких экранах: энергия и переключатель в одной строке */}
         <div className="hidden md:flex md:items-start md:justify-between md:gap-6">
           <div className="flex-shrink-0">
-            <CompetitionEnergy userId={userId} />
+            <CompetitionEnergy userId={userId} isVK={isVK} />
           </div>
           <div className="flex-1 min-w-0">
             <ArenaMonsterSwitcher
@@ -70,7 +71,7 @@ const Arena: React.FC<ArenaProps> = ({ userId }) => {
 
         {/* На узких экранах: энергия сверху, переключатель снизу */}
         <div className="md:hidden space-y-4">
-          <CompetitionEnergy userId={userId} />
+          <CompetitionEnergy userId={userId} isVK={isVK} />
           <ArenaMonsterSwitcher
             userId={userId}
             selectedMonsterId={selectedMonsterId}

@@ -7,9 +7,10 @@ import CompetitionEnergyReplenishment from "./CompetitionEnergyReplenishment";
 
 interface Props {
   userId: number;
+  isVK?: boolean;
 }
 
-const CompetitionEnergy: React.FC<Props> = ({ userId }) => {
+const CompetitionEnergy: React.FC<Props> = ({ userId, isVK = false }) => {
   const [energy, setEnergy] = useState<number | null>(null);
   const [next, setNext] = useState<string>("");
   const [timer, setTimer] = useState<number>(0);
@@ -87,6 +88,7 @@ const CompetitionEnergy: React.FC<Props> = ({ userId }) => {
         <CompetitionEnergyReplenishment
           onClose={() => setShowReplenishment(false)}
           userId={userId}
+          isVK={isVK}
         />
       )}
     </>
