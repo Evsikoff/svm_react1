@@ -5,15 +5,20 @@ import React, { useEffect, useState } from "react";
 interface CompetitionEnergyReplenishmentProps {
   onClose: () => void;
   userId: number;
+  isVK?: boolean;
 }
 
 interface BadgeOption {
   id: string;
   label: string;
-  price: string;
+  price: number;
+  vkPrice?: number;
   icon: string;
   invoiceTypeId: number;
 }
+
+const VK_PRICE_ICON_URL =
+  "https://storage.yandexcloud.net/svm/img/service_icons/vk.png";
 
 interface CreatePaymentLinkResponse {
   paymentlink?: string | null;
@@ -24,14 +29,16 @@ const BADGES: BadgeOption[] = [
   {
     id: "ten",
     label: "Десять единиц энергии",
-    price: "270 ₽",
+    price: 270,
+    vkPrice: 39,
     icon: "https://storage.yandexcloud.net/svm/img/compenerjymid.png",
     invoiceTypeId: 9,
   },
   {
     id: "ninety",
     label: "Девяносто единиц энергии",
-    price: "1980 ₽",
+    price: 1980,
+    vkPrice: 283,
     icon: "https://storage.yandexcloud.net/svm/img/compenerjymany.png",
     invoiceTypeId: 10,
   },
@@ -40,6 +47,7 @@ const BADGES: BadgeOption[] = [
 const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentProps> = ({
   onClose,
   userId,
+  isVK = false,
 }) => {
   const [dialogMessage, setDialogMessage] = useState<string | null>(null);
   const [activeBadgeId, setActiveBadgeId] = useState<string | null>(null);
@@ -147,6 +155,14 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
               {BADGES.map((badge) => {
                 const isDisabled = Boolean(activeBadgeId);
                 const isActive = activeBadgeId === badge.id;
+                const shouldUseVkPrice =
+                  isVK === true && typeof badge.vkPrice === "number";
+                const priceValue = shouldUseVkPrice
+                  ? badge.vkPrice!
+                  : badge.price;
+                const formattedPrice = new Intl.NumberFormat("ru-RU").format(
+                  priceValue
+                );
 
                 return (
                   <button
@@ -177,8 +193,17 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
                         <span className="text-xs uppercase tracking-[0.3em] text-slate-400">
                           Цена
                         </span>
-                        <span className="text-2xl font-bold text-purple-300 md:text-3xl">
-                          {badge.price}
+                        <span className="text-2xl font-bold text-purple-300 md:text-3xl inline-flex items-center gap-2">
+                          {formattedPrice}
+                          {shouldUseVkPrice ? (
+                            <img
+                              src={VK_PRICE_ICON_URL}
+                              alt="VK Pay"
+                              className="h-5 w-5"
+                            />
+                          ) : (
+                            <span>₽</span>
+                          )}
                         </span>
                       </div>
                     </div>
