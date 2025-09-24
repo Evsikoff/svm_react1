@@ -121,7 +121,7 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
         </h2>
         <div className="space-y-4">
           {OPTIONS.map((opt) => {
-            const shouldUseVkPrice = isVK && typeof opt.vkPrice === "number";
+            const shouldUseVkPrice = isVK === true && typeof opt.vkPrice === "number";
             const priceValue = shouldUseVkPrice ? opt.vkPrice! : opt.price;
             const formattedPrice = new Intl.NumberFormat("ru-RU").format(
               priceValue
@@ -149,11 +149,15 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1 text-purple-700 font-semibold">
                   {formattedPrice}
-                  <img
-                    src={VK_PRICE_ICON_URL}
-                    alt="VK Pay"
-                    className="h-4 w-4"
-                  />
+                  {shouldUseVkPrice ? (
+                    <img
+                      src={VK_PRICE_ICON_URL}
+                      alt="VK Pay"
+                      className="h-4 w-4"
+                    />
+                  ) : (
+                    <span>₽</span>
+                  )}
                 </span>
               </button>
             );
