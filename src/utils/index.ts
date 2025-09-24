@@ -92,6 +92,39 @@ export async function withInfiniteRetryAndTimeout<T>(
   return requestPromise;
 }
 
+export const getVKParams = (): {
+  VK: boolean;
+  sign: string | null;
+  vkUserId: string | null;
+} => {
+  if (typeof window === "undefined") {
+    return {
+      VK: false,
+      sign: null,
+      vkUserId: null,
+    };
+  }
+
+  const search = window.location?.search ?? "";
+  const params = new URLSearchParams(search);
+
+  if (!params.has("vk_user_id")) {
+    return {
+      VK: false,
+      sign: null,
+      vkUserId: null,
+    };
+  }
+
+  const VK = true;
+
+  return {
+    VK,
+    sign: params.get("sign"),
+    vkUserId: params.get("vk_user_id"),
+  };
+};
+
 // Остальные функции остаются без изменений
 export const invalidateImageCache = (url: string): string => {
   const timestamp = Date.now();
