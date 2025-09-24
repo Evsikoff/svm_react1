@@ -146,13 +146,15 @@ export const useBootstrap = (apiService: ApiService): UseBootstrapResult => {
           throw new Error("Не удалось определить выбранного монстра");
         }
 
+        const ensuredMonsterId: number = selectedMonsterLocal;
+
         setTeachEnergy(energyRes.teachenergy);
         setNextReplenishment(energyRes.nextfreereplenishment);
 
         // Этап 3: Параллельная загрузка
         const [characteristicsRes, roomRes, impactsRes] = await Promise.all([
           withInfiniteRetryAndTimeout(
-            () => apiService.getCharacteristics(selectedMonsterLocal),
+            () => apiService.getCharacteristics(ensuredMonsterId),
             5000,
             "characteristics",
             (error) => console.error(error)
@@ -161,7 +163,7 @@ export const useBootstrap = (apiService: ApiService): UseBootstrapResult => {
             return res;
           }),
           withInfiniteRetryAndTimeout(
-            () => apiService.getMonsterRoom(selectedMonsterLocal),
+            () => apiService.getMonsterRoom(ensuredMonsterId),
             5000,
             "monsterroom",
             (error) => console.error(error)
@@ -170,7 +172,7 @@ export const useBootstrap = (apiService: ApiService): UseBootstrapResult => {
             return res;
           }),
           withInfiniteRetryAndTimeout(
-            () => apiService.getImpacts(selectedMonsterLocal),
+            () => apiService.getImpacts(ensuredMonsterId),
             5000,
             "impacts",
             (error) => console.error(error)

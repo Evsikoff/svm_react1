@@ -69,7 +69,7 @@ import { BOOT_TASKS_ORDER, MENU_SEQUENCES, IMAGES } from "./constants";
 import { ApiService } from "./services/api";
 
 // Утилиты
-import { formatTimer, withInfiniteRetryAndTimeout } from "./utils";
+import { formatTimer, withInfiniteRetryAndTimeout, getVKParams } from "./utils";
 
 const YANDEX_CLIENT_ID = "3d7ec2c7ceb34ed59b445d7fb152ac9f";
 const YANDEX_CLIENT_SECRET = "1d85ca9e132b4e419c960c38832f8d71";
@@ -79,6 +79,7 @@ type MonsterTypeApiItem = {
   name?: string;
   image?: string;
   price?: number | string;
+  vkprice?: number | string | null;
   activity?: boolean | string | number;
   [key: string]: unknown;
 };
@@ -89,6 +90,7 @@ type MonsterTypesResponse = {
 
 const App: React.FC = () => {
   // ---- state ----
+  const isVKEnvironment = useMemo(() => getVKParams().VK, []);
   const [userId, setUserId] = useState<number | null>(null);
   const [monstersId, setMonstersId] = useState<number[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -216,7 +218,7 @@ const App: React.FC = () => {
   );
 
   const loadCharacteristics = useCallback(async () => {
-    if (!selectedMonsterId) return;
+    if (selectedMonsterId == null) return;
     const characteristicsRes = await apiService.getCharacteristics(
       selectedMonsterId
     );
@@ -224,7 +226,7 @@ const App: React.FC = () => {
   }, [selectedMonsterId, apiService]);
 
   const loadMonsterRoom = useCallback(async () => {
-    if (!selectedMonsterId) return;
+    if (selectedMonsterId == null) return;
     const roomRes = await apiService.getMonsterRoom(selectedMonsterId);
     setMonsterImage(roomRes.monsterimage);
     setRoomImage(roomRes.roomimage);
@@ -232,7 +234,7 @@ const App: React.FC = () => {
   }, [selectedMonsterId, apiService]);
 
   const loadImpacts = useCallback(async () => {
-    if (!selectedMonsterId) return;
+    if (selectedMonsterId == null) return;
     const impactsRes = await apiService.getImpacts(selectedMonsterId);
     setImpacts(impactsRes.monsterimpacts || []);
   }, [selectedMonsterId, apiService]);
@@ -264,6 +266,18 @@ const App: React.FC = () => {
             typeof candidate.price === "number"
               ? candidate.price
               : Number(candidate.price ?? Number.NaN);
+          let resolvedVkPrice: number | null = null;
+          if (typeof candidate.vkprice === "number") {
+            resolvedVkPrice = candidate.vkprice;
+          } else if (
+            typeof candidate.vkprice === "string" &&
+            candidate.vkprice.trim() !== ""
+          ) {
+            const numericVkPrice = Number(candidate.vkprice);
+            resolvedVkPrice = Number.isFinite(numericVkPrice)
+              ? numericVkPrice
+              : null;
+          }
           const resolvedName =
             typeof candidate.name === "string"
               ? candidate.name.trim()
@@ -298,7 +312,8 @@ const App: React.FC = () => {
             image: resolvedImage,
             price: resolvedPrice,
             activity: resolvedActivity,
-          } satisfies MonsterTypeInfo;
+            vkprice: resolvedVkPrice,
+          } as MonsterTypeInfo;
         })
         .filter((item): item is MonsterTypeInfo => item != null);
 
@@ -397,7 +412,7 @@ const App: React.FC = () => {
 
   // --- единая точка загрузки "пакета монстра": характеристики + комната + воздействия ---
   useEffect(() => {
-    if (!selectedMonsterId) return;
+    if (selectedMonsterId == null) return;
 
     let cancelled = false;
     setIsMonsterLoading(true);
@@ -1010,6 +1025,7 @@ const App: React.FC = () => {
           loading={monsterTypesLoading}
           error={monsterTypesError}
           userId={userId}
+          isVK={isVKEnvironment}
           onClose={() => setShowMonsterTypeSelector(false)}
           onRetry={handleRetryMonsterTypes}
         />
