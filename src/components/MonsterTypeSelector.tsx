@@ -103,6 +103,10 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
             ? String(rawItem).trim()
             : "";
         if (!itemId) {
+          console.warn(
+            "[MonsterTypeSelector] Получен пустой item из create-payment-link, VKWebAppShowOrderBox не будет вызван.",
+            { rawItem }
+          );
           setDialogConfig({
             message:
               "Не удалось получить идентификатор товара для оплаты. Попробуйте позднее.",
@@ -117,6 +121,10 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
           }).vkBridge ?? bridge;
 
         if (!vkBridgeInstance || typeof vkBridgeInstance.send !== "function") {
+          console.warn(
+            "[MonsterTypeSelector] vkBridge.send недоступен, VKWebAppShowOrderBox не может быть вызван.",
+            { hasVkBridge: Boolean((window as Window & { vkBridge?: typeof bridge }).vkBridge) }
+          );
           setDialogConfig({
             message:
               "Оплата через VK недоступна в текущем окружении. Попробуйте позже.",
@@ -126,10 +134,19 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
         }
 
         try {
+          console.log(
+            "[MonsterTypeSelector] Вызов VKWebAppShowOrderBox.",
+            { userId, itemId, monsterType: type.number }
+          );
           await vkBridgeInstance.send("VKWebAppShowOrderBox", {
             type: "item",
             item: itemId,
           });
+
+          console.log(
+            "[MonsterTypeSelector] VKWebAppShowOrderBox завершился успешно.",
+            { itemId }
+          );
 
           setDialogConfig({
             message:
@@ -138,6 +155,10 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
           });
           return;
         } catch (vkError) {
+          console.error(
+            "[MonsterTypeSelector] VKWebAppShowOrderBox завершился с ошибкой.",
+            vkError
+          );
           const fallbackMessage =
             vkError instanceof Error
               ? vkError.message
