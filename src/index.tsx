@@ -1035,6 +1035,7 @@ const App: React.FC = () => {
         <EnergyReplenishment
           onClose={() => setShowEnergyModal(false)}
           userId={userId}
+          isVK={isVKEnvironment}
         />
       )}
 

@@ -42,6 +42,7 @@ interface RaisingSectionProps {
   teachEnergy: number;
   timer: number;
   userId: number | null;
+  isVK?: boolean;
   roomImage: string;
   monsterImage: string;
   roomItems: RoomItem[];
@@ -70,6 +71,7 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
   teachEnergy,
   timer,
   userId,
+  isVK = false,
   roomImage,
   monsterImage,
   roomItems,
@@ -262,6 +264,7 @@ const RaisingSection: React.FC<RaisingSectionProps> = ({
         <EnergyReplenishment
           onClose={() => setShowEnergyModal(false)}
           userId={userId}
+          isVK={isVK}
         />
       )}
     </div>

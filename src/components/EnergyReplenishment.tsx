@@ -3,6 +3,7 @@ import React, { useState } from "react";
 interface EnergyReplenishmentProps {
   onClose: () => void;
   userId: number | null;
+  isVK?: boolean;
 }
 
 interface CreatePaymentLinkResponse {
@@ -13,23 +14,29 @@ interface CreatePaymentLinkResponse {
 interface EnergyOption {
   id: string;
   label: string;
-  price: string;
+  price: number;
+  vkPrice?: number;
   icon: string;
   invoiceTypeId: number;
 }
+
+const VK_PRICE_ICON_URL =
+  "https://storage.yandexcloud.net/svm/img/service_icons/vk.png";
 
 const OPTIONS: EnergyOption[] = [
   {
     id: "ten",
     label: "Десять единиц энергии",
-    price: "135 ₽",
+    price: 135,
+    vkPrice: 20,
     icon: "https://storage.yandexcloud.net/svm/img/averagenumberteacherenergy.png",
     invoiceTypeId: 7,
   },
   {
     id: "ninety",
     label: "Девяносто единиц энергии",
-    price: "990 ₽",
+    price: 990,
+    vkPrice: 142,
     icon: "https://storage.yandexcloud.net/svm/img/largenumberteachenergy.png",
     invoiceTypeId: 8,
   },
@@ -38,6 +45,7 @@ const OPTIONS: EnergyOption[] = [
 const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
   onClose,
   userId,
+  isVK = false,
 }) => {
   const [dialogMessage, setDialogMessage] = useState<string | null>(null);
   const [activeOptionId, setActiveOptionId] = useState<string | null>(null);
@@ -112,29 +120,44 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
           Пополнение энергии
         </h2>
         <div className="space-y-4">
-          {OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => handleOptionClick(opt.id)}
-              className={`flex w-full items-center justify-between rounded-xl border border-purple-200 bg-purple-50 p-4 transition-colors hover:bg-purple-100 ${
-                activeOptionId
-                  ? "cursor-not-allowed opacity-75"
-                  : "cursor-pointer"
-              } ${activeOptionId === opt.id ? "bg-purple-100" : ""}`}
-              disabled={Boolean(activeOptionId)}
-            >
-              <div className="flex items-center space-x-4">
-                <img
-                  src={opt.icon}
-                  alt={opt.label}
-                  className="h-[100px] w-auto"
-                />
-                <span className="text-purple-800 font-medium">{opt.label}</span>
-              </div>
-              <span className="text-purple-700">{opt.price}</span>
-            </button>
-          ))}
+          {OPTIONS.map((opt) => {
+            const shouldUseVkPrice = isVK && typeof opt.vkPrice === "number";
+            const priceValue = shouldUseVkPrice ? opt.vkPrice! : opt.price;
+            const formattedPrice = new Intl.NumberFormat("ru-RU").format(
+              priceValue
+            );
+
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => handleOptionClick(opt.id)}
+                className={`flex w-full items-center justify-between rounded-xl border border-purple-200 bg-purple-50 p-4 transition-colors hover:bg-purple-100 ${
+                  activeOptionId
+                    ? "cursor-not-allowed opacity-75"
+                    : "cursor-pointer"
+                } ${activeOptionId === opt.id ? "bg-purple-100" : ""}`}
+                disabled={Boolean(activeOptionId)}
+              >
+                <div className="flex items-center space-x-4">
+                  <img
+                    src={opt.icon}
+                    alt={opt.label}
+                    className="h-[100px] w-auto"
+                  />
+                  <span className="text-purple-800 font-medium">{opt.label}</span>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1 text-purple-700 font-semibold">
+                  {formattedPrice}
+                  <img
+                    src={VK_PRICE_ICON_URL}
+                    alt="VK Pay"
+                    className="h-4 w-4"
+                  />
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <button

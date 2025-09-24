@@ -7,12 +7,14 @@ interface EnergySectionProps {
   teachEnergy: number;
   timer: number;
   userId: number | null;
+  isVK?: boolean;
 }
 
 const EnergySection: React.FC<EnergySectionProps> = ({
   teachEnergy,
   timer,
   userId,
+  isVK = false,
 }) => {
   const [showEnergyModal, setShowEnergyModal] = useState(false);
   return (
@@ -43,6 +45,7 @@ const EnergySection: React.FC<EnergySectionProps> = ({
         <EnergyReplenishment
           onClose={() => setShowEnergyModal(false)}
           userId={userId}
+          isVK={isVK}
         />
       )}
     </div>
