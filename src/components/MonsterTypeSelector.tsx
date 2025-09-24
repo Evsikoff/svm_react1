@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import bridge from "@vkontakte/vk-bridge";
 import { MonsterTypeInfo } from "../types";
 
 type MonsterTypeSelectorProps = {
@@ -14,7 +15,13 @@ type MonsterTypeSelectorProps = {
 interface CreatePaymentLinkResponse {
   paymentlink?: string | null;
   errortext?: string | null;
+  item?: string | null;
 }
+
+type DialogConfig = {
+  message: string;
+  variant: "info" | "success";
+};
 
 const VK_PRICE_ICON_URL =
   "https://storage.yandexcloud.net/svm/img/service_icons/vk.png";
@@ -29,7 +36,7 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
   onRetry,
 }) => {
   const [processingId, setProcessingId] = useState<number | null>(null);
-  const [dialogMessage, setDialogMessage] = useState<string | null>(null);
+  const [dialogConfig, setDialogConfig] = useState<DialogConfig | null>(null);
 
   const isProcessing = processingId !== null;
 
@@ -39,13 +46,27 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
     }
 
     if (!userId) {
-      setDialogMessage("Ошибка: не удалось определить пользователя.");
+      setDialogConfig({
+        message: "Ошибка: не удалось определить пользователя.",
+        variant: "info",
+      });
       return;
     }
 
     setProcessingId(type.number);
 
     try {
+      const requestBody = isVK
+        ? {
+            userId,
+            invoicetypeId: type.number,
+            vk: true,
+          }
+        : {
+            userId,
+            invoicetypeId: type.number,
+          };
+
       const response = await fetch(
         "https://paymentlinkget-production.up.railway.app/create-payment-link",
         {
@@ -53,10 +74,7 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            userId,
-            invoicetypeId: type.number,
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
@@ -69,8 +87,89 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
       const data: CreatePaymentLinkResponse = await response.json();
       const trimmedError = data.errortext?.trim();
       if (trimmedError) {
-        setDialogMessage(trimmedError);
+        setDialogConfig({
+          message: trimmedError,
+          variant: "info",
+        });
         return;
+      }
+
+      if (isVK) {
+        const rawItem = data.item;
+        const itemId =
+          typeof rawItem === "string"
+            ? rawItem.trim()
+            : rawItem != null
+            ? String(rawItem).trim()
+            : "";
+        if (!itemId) {
+          console.warn(
+            "[MonsterTypeSelector] Получен пустой item из create-payment-link, VKWebAppShowOrderBox не будет вызван.",
+            { rawItem }
+          );
+          setDialogConfig({
+            message:
+              "Не удалось получить идентификатор товара для оплаты. Попробуйте позднее.",
+            variant: "info",
+          });
+          return;
+        }
+
+        const vkBridgeInstance =
+          (window as Window & {
+            vkBridge?: typeof bridge;
+          }).vkBridge ?? bridge;
+
+        if (!vkBridgeInstance || typeof vkBridgeInstance.send !== "function") {
+          console.warn(
+            "[MonsterTypeSelector] vkBridge.send недоступен, VKWebAppShowOrderBox не может быть вызван.",
+            { hasVkBridge: Boolean((window as Window & { vkBridge?: typeof bridge }).vkBridge) }
+          );
+          setDialogConfig({
+            message:
+              "Оплата через VK недоступна в текущем окружении. Попробуйте позже.",
+            variant: "info",
+          });
+          return;
+        }
+
+        try {
+          console.log(
+            "[MonsterTypeSelector] Вызов VKWebAppShowOrderBox.",
+            { userId, itemId, monsterType: type.number }
+          );
+          await vkBridgeInstance.send("VKWebAppShowOrderBox", {
+            type: "item",
+            item: itemId,
+          });
+
+          console.log(
+            "[MonsterTypeSelector] VKWebAppShowOrderBox завершился успешно.",
+            { itemId }
+          );
+
+          setDialogConfig({
+            message:
+              "Оплата прошла успешно! Нажмите, чтобы перезапустить игру и применить изменения.",
+            variant: "success",
+          });
+          return;
+        } catch (vkError) {
+          console.error(
+            "[MonsterTypeSelector] VKWebAppShowOrderBox завершился с ошибкой.",
+            vkError
+          );
+          const fallbackMessage =
+            vkError instanceof Error
+              ? vkError.message
+              : "Не удалось завершить оплату через VK.";
+
+          setDialogConfig({
+            message: fallbackMessage,
+            variant: "info",
+          });
+          return;
+        }
       }
 
       const paymentLink = data.paymentlink?.trim();
@@ -79,15 +178,20 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
         return;
       }
 
-      setDialogMessage(
-        "Ссылка на оплату не была получена. Попробуйте повторить попытку позже."
-      );
+      setDialogConfig({
+        message:
+          "Ссылка на оплату не была получена. Попробуйте повторить попытку позже.",
+        variant: "info",
+      });
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : "Произошла непредвиденная ошибка при создании ссылки на оплату.";
-      setDialogMessage(message);
+      setDialogConfig({
+        message,
+        variant: "info",
+      });
     } finally {
       setProcessingId(null);
     }
@@ -256,19 +360,29 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
           )}
         </div>
 
-        {dialogMessage && (
+        {dialogConfig && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
             <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
               <p className="text-base font-semibold text-purple-900">
-                {dialogMessage}
+                {dialogConfig.message}
               </p>
-              <button
-                type="button"
-                onClick={() => setDialogMessage(null)}
-                className="mt-6 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-orange-400 px-6 py-2 text-sm font-semibold text-white shadow transition hover:from-purple-600 hover:to-orange-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-purple-500"
-              >
-                ОК
-              </button>
+              {dialogConfig.variant === "success" ? (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-6 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-orange-400 px-6 py-2 text-sm font-semibold text-white shadow transition hover:from-purple-600 hover:to-orange-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-purple-500"
+                >
+                  Перезапустить игру
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDialogConfig(null)}
+                  className="mt-6 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-orange-400 px-6 py-2 text-sm font-semibold text-white shadow transition hover:from-purple-600 hover:to-orange-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-purple-500"
+                >
+                  ОК
+                </button>
+              )}
             </div>
           </div>
         )}
