@@ -35,6 +35,7 @@ export interface MonsterTypeInfo {
   image: string;
   price: number;
   activity: boolean;
+  vkprice?: number | null;
 }
 
 export interface MonstersResponse {

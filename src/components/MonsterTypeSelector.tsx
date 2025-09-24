@@ -6,6 +6,7 @@ type MonsterTypeSelectorProps = {
   loading: boolean;
   error: string;
   userId: number | null;
+  isVK: boolean;
   onClose: () => void;
   onRetry: () => void;
 };
@@ -15,11 +16,15 @@ interface CreatePaymentLinkResponse {
   errortext?: string | null;
 }
 
+const VK_PRICE_ICON_URL =
+  "https://storage.yandexcloud.net/svm/img/service_icons/vk.png";
+
 const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
   types,
   loading,
   error,
   userId,
+  isVK,
   onClose,
   onRetry,
 }) => {
@@ -163,8 +168,13 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
                   {types.map((type) => {
+                    const shouldUseVkPrice =
+                      isVK && typeof type.vkprice === "number";
+                    const priceValue = shouldUseVkPrice
+                      ? type.vkprice!
+                      : type.price;
                     const formattedPrice = new Intl.NumberFormat("ru-RU").format(
-                      type.price
+                      priceValue
                     );
 
                     return (
@@ -206,11 +216,20 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
                               <span className="text-lg font-semibold text-purple-900">
                                 {type.name}
                               </span>
-                              <span className="inline-flex items-baseline gap-1 rounded-full bg-gradient-to-r from-orange-400/10 to-purple-500/10 px-3 py-1 text-sm font-bold text-orange-600">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-orange-400/10 to-purple-500/10 px-3 py-1 text-sm font-bold text-orange-600">
                                 {formattedPrice}
-                                <span className="text-xs font-semibold text-purple-700">
-                                  ₽
-                                </span>
+                                {shouldUseVkPrice ? (
+                                  <img
+                                    src={VK_PRICE_ICON_URL}
+                                    alt="VK Pay"
+                                    className="h-4 w-4"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <span className="text-xs font-semibold text-purple-700">
+                                    ₽
+                                  </span>
+                                )}
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-purple-500">
