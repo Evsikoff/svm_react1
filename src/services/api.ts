@@ -17,6 +17,7 @@ import {
   withInfiniteRetryAndTimeout,
   invalidateImageCache,
   getFingerprint,
+  getVKParams,
 } from "../utils";
 
 const STATIC_MAIN_MENU_RESPONSE: MainMenuResponse = {
@@ -63,12 +64,19 @@ export class ApiService {
   }
 
   async init(): Promise<InitResponse> {
+    const { VK, sign, vkUserId } = getVKParams();
+    const payload: Record<string, string> = {};
+
+    if (VK && sign && vkUserId) {
+      payload.fingerprint = sign;
+      payload.vkUserId = vkUserId;
+    } else {
+      payload.fingerprint = getFingerprint();
+    }
+
     return withInfiniteRetryAndTimeout(
       async () => {
-        const fingerprint = getFingerprint();
-        const response = await axios.post<InitResponse>(API_URLS.init, {
-          fingerprint,
-        });
+        const response = await axios.post<InitResponse>(API_URLS.init, payload);
         return response.data;
       },
       5000,
@@ -79,8 +87,15 @@ export class ApiService {
   }
 
   async getMainMenu(_monstersId: number[]): Promise<MainMenuResponse> {
+    const { VK } = getVKParams();
+    const filteredMenuItems = VK
+      ? STATIC_MAIN_MENU_RESPONSE.menuitems.filter(
+          (item) => item.name !== "Аккаунт"
+        )
+      : STATIC_MAIN_MENU_RESPONSE.menuitems;
+
     return {
-      menuitems: STATIC_MAIN_MENU_RESPONSE.menuitems.map((item) => ({
+      menuitems: filteredMenuItems.map((item) => ({
         ...item,
       })),
     };
