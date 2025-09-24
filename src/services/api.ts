@@ -19,6 +19,41 @@ import {
   getFingerprint,
 } from "../utils";
 
+const STATIC_MAIN_MENU_RESPONSE: MainMenuResponse = {
+  menuitems: [
+    {
+      name: "Воспитание",
+      iconURL: "https://storage.yandexcloud.net/svm/img/upbringing.png",
+      sequence: 1,
+      index: true,
+    },
+    {
+      name: "Арена",
+      iconURL: "https://storage.yandexcloud.net/svm/img/arena.png",
+      sequence: 2,
+      index: false,
+    },
+    {
+      name: "Магазин",
+      iconURL: "https://storage.yandexcloud.net/svm/img/shop.png",
+      sequence: 3,
+      index: false,
+    },
+    {
+      name: "Инвентарь",
+      iconURL: "https://storage.yandexcloud.net/svm/img/invent2.png",
+      sequence: 4,
+      index: false,
+    },
+    {
+      name: "Аккаунт",
+      iconURL: "https://storage.yandexcloud.net/svm/img/profile.png",
+      sequence: 5,
+      index: false,
+    },
+  ],
+};
+
 export class ApiService {
   private onError?: (error: string) => void;
   private lastEnergyRequest: number = 0;
@@ -43,18 +78,12 @@ export class ApiService {
     );
   }
 
-  async getMainMenu(monstersId: number[]): Promise<MainMenuResponse> {
-    return withInfiniteRetryAndTimeout(
-      async () => {
-        const response = await axios.post<MainMenuResponse>(API_URLS.mainmenu, {
-          monstersId,
-        });
-        return response.data;
-      },
-      5000,
-      "Ошибка при загрузке главного меню",
-      this.onError
-    );
+  async getMainMenu(_monstersId: number[]): Promise<MainMenuResponse> {
+    return {
+      menuitems: STATIC_MAIN_MENU_RESPONSE.menuitems.map((item) => ({
+        ...item,
+      })),
+    };
   }
 
   async getNotifications(userId: number): Promise<NotificationResponse> {
