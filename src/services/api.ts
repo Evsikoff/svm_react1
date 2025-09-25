@@ -55,12 +55,38 @@ const STATIC_MAIN_MENU_RESPONSE: MainMenuResponse = {
   ],
 };
 
+const BAD_REQUEST_STATUS = 400;
+const BAD_REQUEST_RETRY_DELAY = 300;
+
 export class ApiService {
   private onError?: (error: string) => void;
   private lastEnergyRequest: number = 0;
 
   constructor(onError?: (error: string) => void) {
     this.onError = onError;
+  }
+
+  private normalizeMonstersId(
+    monstersId: Array<number | string | null | undefined>
+  ): number[] {
+    if (!Array.isArray(monstersId)) {
+      return [];
+    }
+
+    return monstersId
+      .map((id) => {
+        if (typeof id === "number") {
+          return Number.isFinite(id) ? id : null;
+        }
+
+        if (typeof id === "string" && id.trim() !== "") {
+          const parsed = Number(id);
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        return null;
+      })
+      .filter((id): id is number => id != null);
   }
 
   async init(): Promise<InitResponse> {
@@ -115,13 +141,51 @@ export class ApiService {
     );
   }
 
-  async getMonsters(monstersId: number[]): Promise<MonstersResponse> {
+  async getMonsters(
+    monstersId: Array<number | string | null | undefined>
+  ): Promise<MonstersResponse> {
+    const normalizedIds = this.normalizeMonstersId(monstersId);
+
+    if (!normalizedIds.length) {
+      console.warn(
+        "Попытка вызвать getMonsters без валидных идентификаторов. Запрос пропущен."
+      );
+      return { monsters: [] };
+    }
+
     return withInfiniteRetryAndTimeout(
       async () => {
-        const response = await axios.post<MonstersResponse>(API_URLS.monsters, {
-          monstersId,
-        });
-        return response.data;
+        const maxAttempts = 2;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            const response = await axios.post<MonstersResponse>(
+              API_URLS.monsters,
+              {
+                monstersId: normalizedIds,
+              }
+            );
+            return response.data;
+          } catch (error) {
+            const axiosError = axios.isAxiosError(error) ? error : null;
+            const isBadRequest =
+              axiosError?.response?.status === BAD_REQUEST_STATUS;
+
+            if (attempt < maxAttempts && isBadRequest) {
+              console.warn(
+                `Монстры вернули 400 (попытка ${attempt}/${maxAttempts}). Повтор запроса...`
+              );
+              await new Promise((resolve) =>
+                setTimeout(resolve, BAD_REQUEST_RETRY_DELAY)
+              );
+              continue;
+            }
+
+            throw error;
+          }
+        }
+
+        throw new Error("Не удалось загрузить монстров");
       },
       5000,
       "Ошибка при загрузке монстров",
