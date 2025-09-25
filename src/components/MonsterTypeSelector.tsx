@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import bridge from "@vkontakte/vk-bridge";
 import { MonsterTypeInfo } from "../types";
 
@@ -37,8 +37,28 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
 }) => {
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [dialogConfig, setDialogConfig] = useState<DialogConfig | null>(null);
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const restartTimeoutRef = useRef<number | null>(null);
 
   const isProcessing = processingId !== null;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    modalRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    return () => {
+      if (restartTimeoutRef.current !== null) {
+        window.clearTimeout(restartTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    restartTimeoutRef.current = window.setTimeout(() => {
+      window.location.reload();
+    }, 300);
+  }, []);
 
   const handleTypeSelection = async (type: MonsterTypeInfo) => {
     if (!type.activity || isProcessing) {
@@ -198,7 +218,7 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-6">
       <div
         className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl bg-gradient-to-br from-white via-purple-50 to-orange-50 shadow-[0_25px_70px_-35px_rgba(109,40,217,0.7)]"
         id="monster-type-selector"
@@ -206,6 +226,7 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
         aria-modal="true"
         aria-labelledby="monster-type-selector-title"
         aria-describedby="monster-type-selector-description"
+        ref={modalRef}
       >
         <button
           type="button"
@@ -369,7 +390,7 @@ const MonsterTypeSelector: React.FC<MonsterTypeSelectorProps> = ({
               {dialogConfig.variant === "success" ? (
                 <button
                   type="button"
-                  onClick={() => window.location.reload()}
+                  onClick={handleRestart}
                   className="mt-6 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-orange-400 px-6 py-2 text-sm font-semibold text-white shadow transition hover:from-purple-600 hover:to-orange-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-purple-500"
                 >
                   Перезапустить игру
