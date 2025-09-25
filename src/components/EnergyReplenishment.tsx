@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import bridge from "@vkontakte/vk-bridge";
 
 interface EnergyReplenishmentProps {
   onClose: () => void;
@@ -9,6 +10,7 @@ interface EnergyReplenishmentProps {
 interface CreatePaymentLinkResponse {
   paymentlink?: string | null;
   errortext?: string | null;
+  item?: string | null;
 }
 
 interface EnergyOption {
@@ -47,25 +49,49 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
   userId,
   isVK = false,
 }) => {
-  const [dialogMessage, setDialogMessage] = useState<string | null>(null);
+  const [dialogConfig, setDialogConfig] = useState<
+    | {
+        message: string;
+        variant: "info" | "success";
+      }
+    | null
+  >(null);
   const [activeOptionId, setActiveOptionId] = useState<string | null>(null);
 
   const handleOptionClick = async (optionId: string) => {
     if (!userId) {
-      setDialogMessage("Не удалось определить пользователя. Повторите позже.");
+      setDialogConfig({
+        message: "Не удалось определить пользователя. Повторите позже.",
+        variant: "info",
+      });
       return;
     }
 
     const selectedOption = OPTIONS.find((option) => option.id === optionId);
 
     if (!selectedOption) {
-      setDialogMessage("Выбранный вариант пополнения недоступен. Попробуйте другой.");
+      setDialogConfig({
+        message:
+          "Выбранный вариант пополнения недоступен. Попробуйте другой.",
+        variant: "info",
+      });
       return;
     }
 
     setActiveOptionId(optionId);
 
     try {
+      const requestBody = isVK
+        ? {
+            userId,
+            invoicetypeId: selectedOption.invoiceTypeId,
+            vk: true,
+          }
+        : {
+            userId,
+            invoicetypeId: selectedOption.invoiceTypeId,
+          };
+
       const response = await fetch(
         "https://paymentlinkget-production.up.railway.app/create-payment-link",
         {
@@ -73,10 +99,7 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            userId,
-            invoicetypeId: selectedOption.invoiceTypeId,
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
@@ -89,25 +112,101 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
         data = null;
       }
 
+      const trimmedError = data?.errortext?.trim();
+
       if (!response.ok) {
-        const errorText = data?.errortext || "Не удалось создать ссылку на оплату.";
-        setDialogMessage(errorText);
+        setDialogConfig({
+          message: trimmedError || "Не удалось создать ссылку на оплату.",
+          variant: "info",
+        });
         return;
       }
 
-      if (data?.errortext) {
-        setDialogMessage(data.errortext);
+      if (trimmedError) {
+        setDialogConfig({
+          message: trimmedError,
+          variant: "info",
+        });
         return;
       }
 
-      if (data?.paymentlink) {
-        window.location.href = data.paymentlink;
+      if (isVK) {
+        const rawItem = data?.item;
+        const itemId =
+          typeof rawItem === "string"
+            ? rawItem.trim()
+            : rawItem != null
+            ? String(rawItem).trim()
+            : "";
+
+        if (!itemId) {
+          setDialogConfig({
+            message:
+              "Не удалось получить идентификатор товара для оплаты. Попробуйте позднее.",
+            variant: "info",
+          });
+          return;
+        }
+
+        const vkBridgeInstance =
+          (window as Window & {
+            vkBridge?: typeof bridge;
+          }).vkBridge ?? bridge;
+
+        if (!vkBridgeInstance || typeof vkBridgeInstance.send !== "function") {
+          setDialogConfig({
+            message:
+              "Оплата через VK недоступна в текущем окружении. Попробуйте позже.",
+            variant: "info",
+          });
+          return;
+        }
+
+        try {
+          await vkBridgeInstance.send("VKWebAppShowOrderBox", {
+            type: "item",
+            item: itemId,
+          });
+
+          setDialogConfig({
+            message:
+              "Оплата прошла успешно! Нажмите, чтобы перезапустить игру и применить изменения.",
+            variant: "success",
+          });
+          return;
+        } catch (vkError) {
+          const fallbackMessage =
+            vkError instanceof Error
+              ? vkError.message
+              : "Не удалось завершить оплату через VK.";
+
+          setDialogConfig({
+            message: fallbackMessage,
+            variant: "info",
+          });
+          return;
+        }
+      }
+
+      const paymentLink = data?.paymentlink?.trim();
+      if (paymentLink) {
+        window.location.href = paymentLink;
         return;
       }
 
-      setDialogMessage("Ответ сервера не содержит ссылки на оплату.");
+      setDialogConfig({
+        message: "Ответ сервера не содержит ссылки на оплату.",
+        variant: "info",
+      });
     } catch (error) {
-      setDialogMessage("Произошла ошибка при создании ссылки на оплату. Попробуйте снова.");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Произошла ошибка при создании ссылки на оплату. Попробуйте снова.";
+      setDialogConfig({
+        message,
+        variant: "info",
+      });
     } finally {
       setActiveOptionId(null);
     }
@@ -171,17 +270,27 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
           Закрыть
         </button>
       </div>
-      {dialogMessage && (
+      {dialogConfig && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
           <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full text-center space-y-4">
-            <div className="text-purple-700 font-semibold">{dialogMessage}</div>
-            <button
-              type="button"
-              onClick={() => setDialogMessage(null)}
-              className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg"
-            >
-              ОК
-            </button>
+            <div className="text-purple-700 font-semibold">{dialogConfig.message}</div>
+            {dialogConfig.variant === "success" ? (
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg"
+              >
+                Перезапустить игру
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDialogConfig(null)}
+                className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg"
+              >
+                ОК
+              </button>
+            )}
           </div>
         </div>
       )}

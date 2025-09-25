@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from "react";
+import bridge from "@vkontakte/vk-bridge";
 
 
 interface CompetitionEnergyReplenishmentProps {
@@ -23,6 +24,7 @@ const VK_PRICE_ICON_URL =
 interface CreatePaymentLinkResponse {
   paymentlink?: string | null;
   errortext?: string | null;
+  item?: string | null;
 }
 
 const BADGES: BadgeOption[] = [
@@ -49,7 +51,13 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
   userId,
   isVK = false,
 }) => {
-  const [dialogMessage, setDialogMessage] = useState<string | null>(null);
+  const [dialogConfig, setDialogConfig] = useState<
+    | {
+        message: string;
+        variant: "info" | "success";
+      }
+    | null
+  >(null);
   const [activeBadgeId, setActiveBadgeId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,15 +77,28 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
     const selectedBadge = BADGES.find((badge) => badge.id === badgeId);
 
     if (!selectedBadge) {
-      setDialogMessage(
-        "Выбранный пакет пополнения временно недоступен. Попробуйте другой вариант."
-      );
+      setDialogConfig({
+        message:
+          "Выбранный пакет пополнения временно недоступен. Попробуйте другой вариант.",
+        variant: "info",
+      });
       return;
     }
 
     setActiveBadgeId(badgeId);
 
     try {
+      const requestBody = isVK
+        ? {
+            userId,
+            invoicetypeId: selectedBadge.invoiceTypeId,
+            vk: true,
+          }
+        : {
+            userId,
+            invoicetypeId: selectedBadge.invoiceTypeId,
+          };
+
       const response = await fetch(
         "https://paymentlinkget-production.up.railway.app/create-payment-link",
         {
@@ -85,10 +106,7 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            userId,
-            invoicetypeId: selectedBadge.invoiceTypeId,
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
@@ -100,30 +118,102 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
         data = null;
       }
 
-      const errorText = data?.errortext?.trim() ? data.errortext : null;
+      const trimmedError = data?.errortext?.trim();
 
       if (!response.ok) {
-        setDialogMessage(
-          errorText || "Не удалось создать ссылку на оплату. Попробуйте позже."
-        );
+        setDialogConfig({
+          message:
+            trimmedError || "Не удалось создать ссылку на оплату. Попробуйте позже.",
+          variant: "info",
+        });
         return;
       }
 
-      if (errorText) {
-        setDialogMessage(errorText);
+      if (trimmedError) {
+        setDialogConfig({
+          message: trimmedError,
+          variant: "info",
+        });
         return;
       }
 
-      if (data?.paymentlink) {
-        window.location.href = data.paymentlink;
+      if (isVK) {
+        const rawItem = data?.item;
+        const itemId =
+          typeof rawItem === "string"
+            ? rawItem.trim()
+            : rawItem != null
+            ? String(rawItem).trim()
+            : "";
+
+        if (!itemId) {
+          setDialogConfig({
+            message:
+              "Не удалось получить идентификатор товара для оплаты. Попробуйте позднее.",
+            variant: "info",
+          });
+          return;
+        }
+
+        const vkBridgeInstance =
+          (window as Window & {
+            vkBridge?: typeof bridge;
+          }).vkBridge ?? bridge;
+
+        if (!vkBridgeInstance || typeof vkBridgeInstance.send !== "function") {
+          setDialogConfig({
+            message:
+              "Оплата через VK недоступна в текущем окружении. Попробуйте позже.",
+            variant: "info",
+          });
+          return;
+        }
+
+        try {
+          await vkBridgeInstance.send("VKWebAppShowOrderBox", {
+            type: "item",
+            item: itemId,
+          });
+
+          setDialogConfig({
+            message:
+              "Оплата прошла успешно! Нажмите, чтобы перезапустить игру и применить изменения.",
+            variant: "success",
+          });
+          return;
+        } catch (vkError) {
+          const fallbackMessage =
+            vkError instanceof Error
+              ? vkError.message
+              : "Не удалось завершить оплату через VK.";
+
+          setDialogConfig({
+            message: fallbackMessage,
+            variant: "info",
+          });
+          return;
+        }
+      }
+
+      const paymentLink = data?.paymentlink?.trim();
+      if (paymentLink) {
+        window.location.href = paymentLink;
         return;
       }
 
-      setDialogMessage("Ответ сервера не содержит ссылки на оплату.");
+      setDialogConfig({
+        message: "Ответ сервера не содержит ссылки на оплату.",
+        variant: "info",
+      });
     } catch (error) {
-      setDialogMessage(
-        "Произошла ошибка при создании ссылки на оплату. Попробуйте снова."
-      );
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Произошла ошибка при создании ссылки на оплату. Попробуйте снова.";
+      setDialogConfig({
+        message,
+        variant: "info",
+      });
     } finally {
       setActiveBadgeId(null);
     }
@@ -228,19 +318,29 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
           </div>
         </div>
       </div>
-      {dialogMessage && (
+      {dialogConfig && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/70 px-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
             <div className="text-base font-semibold text-slate-800">
-              {dialogMessage}
+              {dialogConfig.message}
             </div>
-            <button
-              type="button"
-              onClick={() => setDialogMessage(null)}
-              className="mt-6 w-full rounded-full bg-purple-600 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-white transition-colors hover:bg-purple-500"
-            >
-              ОК
-            </button>
+            {dialogConfig.variant === "success" ? (
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="mt-6 w-full rounded-full bg-purple-600 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-white transition-colors hover:bg-purple-500"
+              >
+                Перезапустить игру
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setDialogConfig(null)}
+                className="mt-6 w-full rounded-full bg-purple-600 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-white transition-colors hover:bg-purple-500"
+              >
+                ОК
+              </button>
+            )}
           </div>
         </div>
       )}
