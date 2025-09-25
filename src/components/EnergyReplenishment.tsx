@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import bridge from "@vkontakte/vk-bridge";
 
 interface EnergyReplenishmentProps {
@@ -57,6 +57,26 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
     | null
   >(null);
   const [activeOptionId, setActiveOptionId] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const restartTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    modalRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    return () => {
+      if (restartTimeoutRef.current !== null) {
+        window.clearTimeout(restartTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    restartTimeoutRef.current = window.setTimeout(() => {
+      window.location.reload();
+    }, 300);
+  }, []);
 
   const handleOptionClick = async (optionId: string) => {
     if (!userId) {
@@ -213,8 +233,11 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-[150] bg-black/60">
-      <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl p-6 shadow-2xl w-full max-w-md space-y-6">
+    <div className="fixed inset-0 z-[150] flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-6">
+      <div
+        className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl p-6 shadow-2xl w-full max-w-md space-y-6"
+        ref={modalRef}
+      >
         <h2 className="text-2xl font-bold text-purple-700 text-center">
           Пополнение энергии
         </h2>
@@ -271,13 +294,13 @@ const EnergyReplenishment: React.FC<EnergyReplenishmentProps> = ({
         </button>
       </div>
       {dialogConfig && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 px-4">
           <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full text-center space-y-4">
             <div className="text-purple-700 font-semibold">{dialogConfig.message}</div>
             {dialogConfig.variant === "success" ? (
               <button
                 type="button"
-                onClick={() => window.location.reload()}
+                onClick={handleRestart}
                 className="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg"
               >
                 Перезапустить игру

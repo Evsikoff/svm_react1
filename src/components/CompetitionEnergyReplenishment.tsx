@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import bridge from "@vkontakte/vk-bridge";
 
 
@@ -59,6 +59,8 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
     | null
   >(null);
   const [activeBadgeId, setActiveBadgeId] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement | null>(null);
+  const restartTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const { overflow } = document.body.style;
@@ -67,6 +69,24 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
     return () => {
       document.body.style.overflow = overflow;
     };
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    modalRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    return () => {
+      if (restartTimeoutRef.current !== null) {
+        window.clearTimeout(restartTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    restartTimeoutRef.current = window.setTimeout(() => {
+      window.location.reload();
+    }, 300);
   }, []);
 
   const handleBadgeClick = async (badgeId: string) => {
@@ -220,9 +240,12 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
   };
 
   return (
-    <div className="fixed inset-0 z-[200] overflow-y-auto bg-black/70">
-      <div className="flex min-h-full items-start justify-center px-4 py-10 md:items-center md:py-16">
-        <div className="relative w-full max-w-4xl rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-black p-6 text-white shadow-[0_25px_80px_rgba(0,0,0,0.55)] max-h-[calc(100vh-4rem)] overflow-y-auto md:p-8">
+    <div className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/70 px-4 py-6">
+      <div className="flex min-h-full w-full max-w-4xl justify-center">
+        <div
+          className="relative w-full rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-black p-6 text-white shadow-[0_25px_80px_rgba(0,0,0,0.55)] max-h-[calc(100vh-4rem)] overflow-y-auto md:p-8"
+          ref={modalRef}
+        >
           <button
             type="button"
             aria-label="Закрыть окно пополнения энергии"
@@ -327,7 +350,7 @@ const CompetitionEnergyReplenishment: React.FC<CompetitionEnergyReplenishmentPro
             {dialogConfig.variant === "success" ? (
               <button
                 type="button"
-                onClick={() => window.location.reload()}
+                onClick={handleRestart}
                 className="mt-6 w-full rounded-full bg-purple-600 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-white transition-colors hover:bg-purple-500"
               >
                 Перезапустить игру
