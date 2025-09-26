@@ -84,19 +84,26 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
     itemBonuses,
   ]);
 
-  const handleClose = useCallback(async () => {
+  const handleClose = useCallback(() => {
     if (isVKEnvironment) {
       const vkBridge = (window as Window & { vkBridge?: VKBridgeInstance })
         .vkBridge;
 
       if (vkBridge) {
-        try {
-          await vkBridge.send("VKWebAppShowNativeAds", {
+        vkBridge
+          .send("VKWebAppShowNativeAds", {
             ad_format: "interstitial",
+          })
+          .then((result) => {
+            console.log("VKWebAppShowNativeAds result:", result);
+          })
+          .catch((error) => {
+            console.error("VKWebAppShowNativeAds error:", error);
           });
-        } catch (error) {
-          console.error("VKWebAppShowNativeAds error:", error);
-        }
+      } else {
+        console.warn(
+          "VK Bridge is not available; unable to request VKWebAppShowNativeAds"
+        );
       }
     }
 

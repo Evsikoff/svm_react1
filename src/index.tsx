@@ -188,12 +188,18 @@ const App: React.FC = () => {
       .vkBridge;
 
     if (!vkBridge) {
+      console.warn(
+        "VK Bridge is not available; skipping VKWebAppCheckNativeAds calls"
+      );
       return;
     }
 
     const checkAds = () => {
       vkBridge
         .send("VKWebAppCheckNativeAds", { ad_format: "interstitial" })
+        .then((result) => {
+          console.log("VKWebAppCheckNativeAds result:", result);
+        })
         .catch((error) =>
           console.error("VKWebAppCheckNativeAds error:", error)
         );
