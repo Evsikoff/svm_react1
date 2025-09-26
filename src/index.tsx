@@ -526,18 +526,20 @@ const App: React.FC = () => {
         setNotificationCount(notificationRes.notificationquantity);
 
         // Монстры
-        const sorted = (monstersRes.monsters || []).sort(
+        const sorted = [...(monstersRes.monsters || [])].sort(
           (a, b) => a.sequence - b.sequence
         );
         setMonsters(sorted);
 
         // Выбор монстра
-        const defaultMonster = sorted.find((m) => m.index);
+        const defaultMonsterIndex = sorted.findIndex((m) => m.index);
         let selectedMonsterLocal: number | null = null;
-        if (defaultMonster) {
-          selectedMonsterLocal = (defaultMonster as any).monsterId;
+        if (defaultMonsterIndex >= 0) {
+          selectedMonsterLocal = initRes.monstersId[defaultMonsterIndex] ?? null;
+        } else if (initRes.monstersId.length > 0) {
+          selectedMonsterLocal = initRes.monstersId[0];
         } else if (sorted.length > 0) {
-          selectedMonsterLocal = (sorted[0] as any).monsterId;
+          selectedMonsterLocal = (sorted[0] as any).monsterId ?? null;
         }
 
         // Сохраняем начальный ID монстра
