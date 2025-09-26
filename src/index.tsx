@@ -467,14 +467,17 @@ const App: React.FC = () => {
         );
         if (cancelled) return;
         setUserId(initRes.userId);
-        setMonstersId(initRes.monstersId);
+        const initialMonsterIds = Array.isArray(initRes.monstersId)
+          ? initRes.monstersId
+          : [];
+        setMonstersId(initialMonsterIds);
         markTaskDone("init");
 
         // 2) Параллельно тянем главное меню, уведомления, монстров и энергию
         const [mainMenuRes, notificationRes, monstersRes, energyRes] =
           await Promise.all([
             withInfiniteRetryAndTimeout(
-              () => apiService.getMainMenu(initRes.monstersId),
+              () => apiService.getMainMenu(initialMonsterIds),
               5000,
               "mainmenu",
               setError
@@ -492,7 +495,7 @@ const App: React.FC = () => {
               return res;
             }),
             withInfiniteRetryAndTimeout(
-              () => apiService.getMonsters(initRes.monstersId),
+              () => apiService.getMonsters(initialMonsterIds),
               5000,
               "monsters",
               setError
@@ -535,9 +538,9 @@ const App: React.FC = () => {
         const defaultMonsterIndex = sorted.findIndex((m) => m.index);
         let selectedMonsterLocal: number | null = null;
         if (defaultMonsterIndex >= 0) {
-          selectedMonsterLocal = initRes.monstersId[defaultMonsterIndex] ?? null;
-        } else if (initRes.monstersId.length > 0) {
-          selectedMonsterLocal = initRes.monstersId[0];
+          selectedMonsterLocal = initialMonsterIds[defaultMonsterIndex] ?? null;
+        } else if (initialMonsterIds.length > 0) {
+          selectedMonsterLocal = initialMonsterIds[0];
         } else if (sorted.length > 0) {
           selectedMonsterLocal = (sorted[0] as any).monsterId ?? null;
         }
