@@ -1,5 +1,9 @@
 import React, { useRef, useEffect, useCallback } from "react";
 
+type VKBridgeInstance = {
+  send: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
+};
+
 interface CharacteristicChange {
   characteristicsid: number;
   name: string;
@@ -38,6 +42,7 @@ interface RaisingInteractionProps {
   inventoryItems: InventoryItem[];
   itemEffects?: ItemEffect[];
   itemBonuses?: ItemBonus[];
+  isVKEnvironment?: boolean;
   onClose: () => void;
 }
 
@@ -48,6 +53,7 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
   inventoryItems,
   itemEffects = [],
   itemBonuses = [],
+  isVKEnvironment = false,
   onClose,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -79,8 +85,30 @@ const RaisingInteraction: React.FC<RaisingInteractionProps> = ({
   ]);
 
   const handleClose = useCallback(() => {
+    if (isVKEnvironment) {
+      const vkBridge = (window as Window & { vkBridge?: VKBridgeInstance })
+        .vkBridge;
+
+      if (vkBridge) {
+        vkBridge
+          .send("VKWebAppShowNativeAds", {
+            ad_format: "interstitial",
+          })
+          .then((result) => {
+            console.log("VKWebAppShowNativeAds result:", result);
+          })
+          .catch((error) => {
+            console.error("VKWebAppShowNativeAds error:", error);
+          });
+      } else {
+        console.warn(
+          "VK Bridge is not available; unable to request VKWebAppShowNativeAds"
+        );
+      }
+    }
+
     onClose();
-  }, [onClose]);
+  }, [isVKEnvironment, onClose]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-200 to-orange-200 p-2 sm:p-4">
