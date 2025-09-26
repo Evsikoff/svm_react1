@@ -535,14 +535,14 @@ const App: React.FC = () => {
         setMonsters(sorted);
 
         // Выбор монстра
-        const defaultMonsterIndex = sorted.findIndex((m) => m.index);
+        const defaultMonster = sorted.find((m) => m.index);
         let selectedMonsterLocal: number | null = null;
-        if (defaultMonsterIndex >= 0) {
-          selectedMonsterLocal = initialMonsterIds[defaultMonsterIndex] ?? null;
+        if (defaultMonster) {
+          selectedMonsterLocal = defaultMonster.monsterId ?? null;
         } else if (initialMonsterIds.length > 0) {
           selectedMonsterLocal = initialMonsterIds[0];
         } else if (sorted.length > 0) {
-          selectedMonsterLocal = (sorted[0] as any).monsterId ?? null;
+          selectedMonsterLocal = sorted[0]?.monsterId ?? null;
         }
 
         // Сохраняем начальный ID монстра
