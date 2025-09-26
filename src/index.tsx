@@ -179,6 +179,35 @@ const App: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isVKEnvironment) {
+      return;
+    }
+
+    const vkBridge = (window as Window & { vkBridge?: VKBridgeInstance })
+      .vkBridge;
+
+    if (!vkBridge) {
+      return;
+    }
+
+    const checkAds = () => {
+      vkBridge
+        .send("VKWebAppCheckNativeAds", { ad_format: "interstitial" })
+        .catch((error) =>
+          console.error("VKWebAppCheckNativeAds error:", error)
+        );
+    };
+
+    checkAds();
+
+    const intervalId = window.setInterval(checkAds, 60_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isVKEnvironment]);
+
   // Api: СТАБИЛЬНЫЙ экземпляр на весь жизненный цикл компонента
   const apiService = useMemo(
     () => new ApiService((err: string) => setError(err)),
@@ -831,6 +860,7 @@ const App: React.FC = () => {
           inventoryItems={interactionData.inventoryitems || []}
           itemEffects={interactionData.itemeffects || []}
           itemBonuses={interactionData.impactitembonuses || []}
+          isVKEnvironment={isVKEnvironment}
           onClose={() => {
             setShowRaisingInteraction(false);
             setInteractionData(null);
