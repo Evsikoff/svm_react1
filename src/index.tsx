@@ -1044,7 +1044,7 @@ const App: React.FC = () => {
         )}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.SHOP && (
-          <Shop userId={userId} />
+          <Shop userId={userId} isVKEnvironment={isVKEnvironment} />
         )}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.INVENTORY && (
