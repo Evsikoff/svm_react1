@@ -1,10 +1,12 @@
 // Shop.tsx — фрейм «Инвентарь» с «Золотыми монетами» и «Магазином»
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import CoinPackSelector from "./components/CoinPackSelector";
 
 // ===== Типы =====
 type Props = {
   userId: number | null; // берётся из init
+  isVKEnvironment?: boolean;
 };
 
 type WalletResponse = {
@@ -52,7 +54,8 @@ async function withRetry<T>(
 }
 
 // ===== Компонент =====
-const Shop: React.FC<Props> = ({ userId }) => {
+
+const Shop: React.FC<Props> = ({ userId, isVKEnvironment = false }) => {
   // --- Кошелёк ---
   const [money, setMoney] = useState<number>(0);
   const [moneyLoading, setMoneyLoading] = useState(true);
@@ -67,6 +70,7 @@ const Shop: React.FC<Props> = ({ userId }) => {
   const [actionLoading, setActionLoading] = useState<number | null>(null); // id товара, который «крутится»
   const [actionMessage, setActionMessage] = useState<string>(""); // текст из функции покупки
   const [showModal, setShowModal] = useState(false); // модальное окно с сообщением
+  const [showCoinPackSelector, setShowCoinPackSelector] = useState(false);
 
   // ===== Загрузка кошелька (вынесено в функцию, вызывается и при закрытии модалки) =====
   const loadWallet = useCallback(async () => {
@@ -94,6 +98,15 @@ const Shop: React.FC<Props> = ({ userId }) => {
       setMoneyLoading(false);
     }
   }, [userId]);
+
+  const handleOpenCoinPacks = useCallback(() => {
+    setShowCoinPackSelector(true);
+  }, []);
+
+  const handleCloseCoinPacks = useCallback(() => {
+    setShowCoinPackSelector(false);
+    loadWallet();
+  }, [loadWallet]);
 
   useEffect(() => {
     loadWallet();
@@ -226,9 +239,8 @@ const Shop: React.FC<Props> = ({ userId }) => {
               </div>
             </div>
             <button
-              className="px-4 py-2 rounded bg-gray-300 text-gray-600 cursor-not-allowed"
-              disabled
-              title="Недоступно"
+              className="px-4 py-2 rounded-xl bg-purple-500 text-white font-semibold shadow hover:bg-purple-600 transition"
+              onClick={handleOpenCoinPacks}
             >
               Пополнить
             </button>
@@ -353,6 +365,13 @@ const Shop: React.FC<Props> = ({ userId }) => {
             </div>
           </div>
         </div>
+      )}
+      {showCoinPackSelector && (
+        <CoinPackSelector
+          onClose={handleCloseCoinPacks}
+          userId={userId}
+          isVK={isVKEnvironment}
+        />
       )}
     </div>
   );
