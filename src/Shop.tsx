@@ -2,11 +2,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import CoinPackSelector from "./components/CoinPackSelector";
+import VKDesktopFrame from "./components/VKDesktopFrame";
 
 // ===== Типы =====
 type Props = {
   userId: number | null; // берётся из init
   isVKEnvironment?: boolean;
+  isVKDesktop?: boolean;
 };
 
 type WalletResponse = {
@@ -55,7 +57,11 @@ async function withRetry<T>(
 
 // ===== Компонент =====
 
-const Shop: React.FC<Props> = ({ userId, isVKEnvironment = false }) => {
+const Shop: React.FC<Props> = ({
+  userId,
+  isVKEnvironment = false,
+  isVKDesktop = false,
+}) => {
   // --- Кошелёк ---
   const [money, setMoney] = useState<number>(0);
   const [moneyLoading, setMoneyLoading] = useState(true);
@@ -207,174 +213,214 @@ const Shop: React.FC<Props> = ({ userId, isVKEnvironment = false }) => {
     [money]
   );
 
-  return (
-    <div className="p-6">
-      {/* Общий спиннер на время загрузки кошелька */}
-      {moneyLoading && (
-        <div className="w-full flex items-center justify-center py-16">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+  const isDesktopView = isVKDesktop;
+  const renderContent = () => {
+    const loadingWrapperClass = isDesktopView
+      ? "w-full flex items-center justify-center py-16"
+      : "w-full flex items-center justify-center py-16";
+    const contentWrapperClass = isDesktopView
+      ? "mx-auto max-w-4xl space-y-8"
+      : "max-w-xl mx-auto";
+    const walletCardClass = isDesktopView
+      ? "flex items-center gap-6 rounded-3xl border-2 border-yellow-300 bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-100 p-6 shadow-xl"
+      : "flex items-center gap-4 bg-yellow-50 border border-yellow-300 rounded-2xl p-4 shadow";
+    const walletLabelClass = isDesktopView
+      ? "text-sm uppercase tracking-[0.3em] text-yellow-700"
+      : "text-sm text-yellow-800/80";
+    const walletValueClass = isDesktopView
+      ? "text-3xl sm:text-4xl font-black text-yellow-800 leading-tight break-all"
+      : "text-xl sm:text-2xl md:text-3xl font-extrabold text-yellow-800 leading-tight break-all";
+    const walletButtonClass = isDesktopView
+      ? "px-6 py-3 rounded-2xl bg-purple-500 text-white font-semibold shadow-lg hover:bg-purple-600 transition"
+      : "px-4 py-2 rounded-xl bg-purple-500 text-white font-semibold shadow hover:bg-purple-600 transition";
+    const sectionTitleClass = isDesktopView
+      ? "text-2xl font-bold text-purple-800 mb-4"
+      : "text-lg font-semibold mb-3";
+    const shopSpinnerClass = isDesktopView
+      ? "w-full flex items-center justify-center py-12"
+      : "w-full flex items-center justify-center py-10";
+    const shopErrorClass = isDesktopView
+      ? "bg-red-50 text-red-700 border border-red-200 px-5 py-3 rounded-2xl shadow"
+      : "bg-red-50 text-red-700 border border-red-200 px-4 py-2 rounded";
+    const emptyStateClass = isDesktopView
+      ? "text-gray-500 text-lg text-center py-6"
+      : "text-gray-500";
+    const itemsListClass = isDesktopView
+      ? "grid grid-cols-2 gap-5"
+      : "grid grid-cols-1 gap-4";
+    const itemCardBase = isDesktopView
+      ? "rounded-3xl p-5 shadow-xl"
+      : "rounded-2xl p-4 shadow";
+    const itemImageClass = isDesktopView
+      ? "w-24 h-24 object-contain shrink-0 rounded-2xl bg-white/60"
+      : "w-20 h-20 object-contain shrink-0 rounded-xl bg-white/60";
+    const itemTitleClass = isDesktopView
+      ? "text-lg font-bold truncate"
+      : "text-base font-bold truncate";
+    const itemPriceClass = isDesktopView
+      ? "text-base font-semibold whitespace-nowrap"
+      : "text-sm font-semibold whitespace-nowrap";
+    const itemDescriptionClass = isDesktopView
+      ? "mt-2 text-sm text-gray-700 leading-relaxed line-clamp-4"
+      : "mt-1 text-sm text-gray-700 line-clamp-3";
+    const modalContainerClass = isDesktopView
+      ? "bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4"
+      : "bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4";
+    const walletErrorClass = isDesktopView
+      ? "bg-red-100 text-red-700 border border-red-300 px-5 py-3 rounded-2xl mb-4"
+      : "bg-red-100 text-red-700 border border-red-300 px-4 py-2 rounded mb-4";
 
-      {!moneyLoading && (
-        <div className="max-w-xl mx-auto">
-          {/* Ошибка кошелька */}
-          {moneyError && (
-            <div className="bg-red-100 text-red-700 border border-red-300 px-4 py-2 rounded mb-4">
-              {moneyError}
-            </div>
-          )}
-
-          {/* Фрейм «Золотые монеты» */}
-          <div className="flex items-center gap-4 bg-yellow-50 border border-yellow-300 rounded-2xl p-4 shadow">
-            <img
-              src="https://storage.yandexcloud.net/svm/img/money.png"
-              alt="Золотые монеты"
-              className="w-16 h-16 object-contain"
-            />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm text-yellow-800/80">Золотые монеты</div>
-              <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-yellow-800 leading-tight break-all">
-                {moneyFormatted}
-              </div>
-            </div>
-            <button
-              className="px-4 py-2 rounded-xl bg-purple-500 text-white font-semibold shadow hover:bg-purple-600 transition"
-              onClick={handleOpenCoinPacks}
-            >
-              Пополнить
-            </button>
+    return (
+      <>
+        {moneyLoading && (
+          <div className={loadingWrapperClass}>
+            <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
           </div>
+        )}
 
-          {/* Фрейм «Магазин» */}
-          <section aria-label="Магазин" className="mt-6">
-            <h2 className="text-lg font-semibold mb-3">Магазин</h2>
+        {!moneyLoading && (
+          <div className={contentWrapperClass}>
+            {moneyError && <div className={walletErrorClass}>{moneyError}</div>}
 
-            {/* Состояния загрузки/ошибки */}
-            {shopLoading && (
-              <div className="w-full flex items-center justify-center py-10">
-                <div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+            <div className={walletCardClass}>
+              <img
+                src="https://storage.yandexcloud.net/svm/img/money.png"
+                alt="Золотые монеты"
+                className="w-16 h-16 object-contain"
+              />
+              <div className="flex-1 min-w-0">
+                <div className={walletLabelClass}>Золотые монеты</div>
+                <div className={walletValueClass}>{moneyFormatted}</div>
               </div>
-            )}
-            {!shopLoading && shopError && (
-              <div className="bg-red-50 text-red-700 border border-red-200 px-4 py-2 rounded">
-                {shopError}
-              </div>
-            )}
-
-            {!shopLoading && !shopError && (
-              <div>
-                {items.length === 0 ? (
-                  <div className="text-gray-500">
-                    Товары временно отсутствуют.
-                  </div>
-                ) : (
-                  <ul className="grid grid-cols-1 gap-4">
-                    {items.map((it) => {
-                      const isActive = it.active !== false;
-                      const affordable = it.inventoryprice <= money;
-                      const isLoading = actionLoading === it.inventoryid;
-                      const clickable = isActive && affordable;
-                      return (
-                        <li
-                          key={it.inventoryid}
-                          className={`${badgeBg(
-                            it.inventorytype
-                          )} rounded-2xl p-4 shadow ${
-                            clickable
-                              ? "cursor-pointer hover:shadow-lg"
-                              : "opacity-50 cursor-not-allowed"
-                          } ${isActive ? "" : "grayscale"} relative`}
-                          onClick={() =>
-                            clickable ? handleBuy(it) : undefined
-                          }
-                          aria-disabled={!clickable}
-                        >
-                          <div className="flex items-start gap-4">
-                            <img
-                              src={it.inventoryimage}
-                              alt={it.inventoryname}
-                              className="w-20 h-20 object-contain shrink-0 rounded-xl bg-white/60"
-                              loading="lazy"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-3">
-                                <h3
-                                  className="text-base font-bold truncate"
-                                  title={it.inventoryname}
-                                >
-                                  {it.inventoryname}
-                                </h3>
-                                <div className="text-sm font-semibold whitespace-nowrap">
-                                  {new Intl.NumberFormat("ru-RU").format(
-                                    it.inventoryprice
-                                  )}
-                                </div>
-                              </div>
-                              <p className="mt-1 text-sm text-gray-700 line-clamp-3">
-                                {it.inventorydescription}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Локальный спиннер покупки поверх карточки */}
-                          {isLoading && (
-                            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/50">
-                              <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            )}
-          </section>
-        </div>
-      )}
-
-      {/* Модальное окно сообщения (всплывающее) */}
-      {showModal && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 bg-black/50"
-          onClick={() => {
-            setShowModal(false);
-            // После закрытия модалки — обновляем кошелёк
-            loadWallet();
-          }}
-        >
-          <div
-            className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()} // не закрывать при клике внутри окна
-          >
-            <div className="text-lg font-semibold mb-4">Сообщение</div>
-            <div className="text-gray-800 whitespace-pre-wrap">
-              {actionMessage}
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  loadWallet(); // обновляем баланс и при закрытии по кнопке
-                }}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                OK
+              <button className={walletButtonClass} onClick={handleOpenCoinPacks}>
+                Пополнить
               </button>
             </div>
+
+            <section aria-label="Магазин" className={isDesktopView ? "mt-8" : "mt-6"}>
+              <h2 className={sectionTitleClass}>Магазин</h2>
+
+              {shopLoading && (
+                <div className={shopSpinnerClass}>
+                  <div className="w-10 h-10 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+
+              {!shopLoading && shopError && (
+                <div className={shopErrorClass}>{shopError}</div>
+              )}
+
+              {!shopLoading && !shopError && (
+                <div>
+                  {items.length === 0 ? (
+                    <div className={emptyStateClass}>Товары временно отсутствуют.</div>
+                  ) : (
+                    <ul className={itemsListClass}>
+                      {items.map((it) => {
+                        const isActive = it.active !== false;
+                        const affordable = it.inventoryprice <= money;
+                        const isLoading = actionLoading === it.inventoryid;
+                        const clickable = isActive && affordable;
+                        const cardClasses = `${badgeBg(it.inventorytype)} ${itemCardBase} ${
+                          clickable
+                            ? "cursor-pointer hover:shadow-2xl hover:-translate-y-1 transition"
+                            : "opacity-50 cursor-not-allowed"
+                        } ${isActive ? "" : "grayscale"} relative`;
+
+                        return (
+                          <li
+                            key={it.inventoryid}
+                            className={cardClasses}
+                            onClick={() => (clickable ? handleBuy(it) : undefined)}
+                            aria-disabled={!clickable}
+                          >
+                            <div className="flex items-start gap-4">
+                              <img
+                                src={it.inventoryimage}
+                                alt={it.inventoryname}
+                                className={itemImageClass}
+                                loading="lazy"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-3">
+                                  <h3 className={itemTitleClass} title={it.inventoryname}>
+                                    {it.inventoryname}
+                                  </h3>
+                                  <div className={itemPriceClass}>
+                                    {new Intl.NumberFormat("ru-RU").format(
+                                      it.inventoryprice
+                                    )}
+                                  </div>
+                                </div>
+                                <p className={itemDescriptionClass}>{it.inventorydescription}</p>
+                              </div>
+                            </div>
+
+                            {isLoading && (
+                              <div className="absolute inset-0 flex items-center justify-center rounded-3xl bg-white/60">
+                                <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </section>
           </div>
-        </div>
-      )}
-      {showCoinPackSelector && (
-        <CoinPackSelector
-          onClose={handleCloseCoinPacks}
-          userId={userId}
-          isVK={isVKEnvironment}
-        />
-      )}
-    </div>
-  );
+        )}
+
+        {showModal && (
+          <div
+            className="fixed inset-0 flex items-center justify-center z-50 bg-black/50"
+            onClick={() => {
+              setShowModal(false);
+              loadWallet();
+            }}
+          >
+            <div
+              className={modalContainerClass}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-lg font-semibold mb-4">Сообщение</div>
+              <div className="text-gray-800 whitespace-pre-wrap">{actionMessage}</div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    loadWallet();
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCoinPackSelector && (
+          <CoinPackSelector
+            onClose={handleCloseCoinPacks}
+            userId={userId}
+            isVK={isVKEnvironment}
+          />
+        )}
+      </>
+    );
+  };
+
+  if (isDesktopView) {
+    return (
+      <VKDesktopFrame title="Магазин" accent="amber">
+        {renderContent()}
+      </VKDesktopFrame>
+    );
+  }
+
+  return <div className="p-6">{renderContent()}</div>;
 };
 
 export default Shop;

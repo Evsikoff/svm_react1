@@ -90,7 +90,9 @@ type MonsterTypesResponse = {
 
 const App: React.FC = () => {
   // ---- state ----
-  const isVKEnvironment = useMemo(() => getVKParams().VK, []);
+  const vkParams = useMemo(() => getVKParams(), []);
+  const isVKEnvironment = vkParams.VK;
+  const VKdesktop = vkParams.VKdesktop;
   const [userId, setUserId] = useState<number | null>(null);
   const [monstersId, setMonstersId] = useState<number[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -1040,15 +1042,23 @@ const App: React.FC = () => {
       {/* Остальные разделы */}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.ARENA && (
-          <Arena userId={userId} isVK={isVKEnvironment} />
+          <Arena
+            userId={userId}
+            isVK={isVKEnvironment}
+            isVKDesktop={VKdesktop}
+          />
         )}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.SHOP && (
-          <Shop userId={userId} isVKEnvironment={isVKEnvironment} />
+          <Shop
+            userId={userId}
+            isVKEnvironment={isVKEnvironment}
+            isVKDesktop={VKdesktop}
+          />
         )}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.INVENTORY && (
-          <Inventory userId={userId} />
+          <Inventory userId={userId} isVKDesktop={VKdesktop} />
         )}
       {!showRaisingInteraction &&
         selectedMenuSequence === MENU_SEQUENCES.ACCOUNT && (

@@ -8,9 +8,14 @@ import CompetitionEnergyReplenishment from "./CompetitionEnergyReplenishment";
 interface Props {
   userId: number;
   isVK?: boolean;
+  isVKDesktop?: boolean;
 }
 
-const CompetitionEnergy: React.FC<Props> = ({ userId, isVK = false }) => {
+const CompetitionEnergy: React.FC<Props> = ({
+  userId,
+  isVK = false,
+  isVKDesktop = false,
+}) => {
   const [energy, setEnergy] = useState<number | null>(null);
   const [next, setNext] = useState<string>("");
   const [timer, setTimer] = useState<number>(0);
@@ -56,10 +61,19 @@ const CompetitionEnergy: React.FC<Props> = ({ userId, isVK = false }) => {
 
   if (energy == null) return null;
 
+  const wrapperClass = isVKDesktop
+    ? "w-full mb-6"
+    : "w-full flex justify-center mb-6 md:mb-0";
+  const cardClassBase =
+    "flex flex-col items-center md:justify-between rounded-xl border-2 border-blue-300 bg-blue-50 shadow-md p-4";
+  const cardClass = `${cardClassBase} ${
+    isVKDesktop ? "w-full" : "w-full md:w-auto md:h-[282px]"
+  }`;
+
   return (
     <>
-      <div className="w-full flex justify-center mb-6 md:mb-0">
-        <div className="flex flex-col items-center md:justify-between rounded-xl border-2 border-blue-300 bg-blue-50 shadow-md p-4 w-full md:w-auto md:h-[282px]">
+      <div className={wrapperClass}>
+        <div className={cardClass}>
           <div className="flex items-center gap-3">
             <img
               src={IMAGES.competitionEnergy}
