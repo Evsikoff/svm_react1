@@ -10,7 +10,7 @@ const ACCENT_CLASS_MAP: Record<Accent, string> = {
 };
 
 interface Props {
-  title: string;
+  title?: string;
   accent?: Accent;
   children: React.ReactNode;
   contentClassName?: string;
@@ -27,11 +27,13 @@ const VKDesktopFrame: React.FC<Props> = ({
   return (
     <div className="vk-desktop-screen">
       <div className="vk-desktop-screen__frame">
-        <div
-          className={`vk-desktop-screen__header bg-gradient-to-r ${accentGradient}`}
-        >
-          {title}
-        </div>
+        {title && (
+          <div
+            className={`vk-desktop-screen__header bg-gradient-to-r ${accentGradient}`}
+          >
+            {title}
+          </div>
+        )}
         <div className={`vk-desktop-screen__content ${contentClassName}`}>
           {children}
         </div>

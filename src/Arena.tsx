@@ -64,42 +64,41 @@ const Arena: React.FC<ArenaProps> = ({
 
   if (isVKDesktop) {
     return (
-      <VKDesktopFrame title="Арена" contentClassName="flex flex-col" accent="purple">
-        <div className="flex flex-col h-full space-y-8">
-          <div className="grid grid-cols-[320px,1fr] gap-6">
-            <div className="space-y-6">
-              <div className="rounded-3xl border border-blue-200 bg-white/90 p-6 shadow-inner">
-                <CompetitionEnergy
-                  userId={userId}
-                  isVK={isVK}
-                  isVKDesktop={isVKDesktop}
-                />
-              </div>
-              {historyEnabled && (
-                <div className="rounded-3xl border border-orange-200 bg-white/90 p-6 shadow-inner">
-                  <CompetitionHistory />
-                </div>
-              )}
-            </div>
-            <div className="rounded-3xl border border-emerald-200 bg-white/90 p-6 shadow-inner">
-              <ArenaMonsterSwitcher
-                userId={userId}
-                selectedMonsterId={selectedMonsterId}
-                onMonsterChange={handleMonsterChange}
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 rounded-3xl border-2 border-orange-200 bg-white/95 p-6 shadow-xl">
-            <h2 className="text-3xl font-bold text-orange-700 text-center mb-6">
-              Состязания
-            </h2>
-            <Competitions
-              selectedMonsterId={selectedMonsterId}
+      <VKDesktopFrame
+        contentClassName="flex flex-col space-y-8"
+        accent="purple"
+      >
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-blue-200 bg-white/90 p-6 shadow-inner">
+            <CompetitionEnergy
               userId={userId}
-              onCompetitionStart={handleCompetitionStart}
+              isVK={isVK}
+              isVKDesktop={isVKDesktop}
             />
           </div>
+          <div className="rounded-3xl border border-emerald-200 bg-white/90 p-6 shadow-inner">
+            <ArenaMonsterSwitcher
+              userId={userId}
+              selectedMonsterId={selectedMonsterId}
+              onMonsterChange={handleMonsterChange}
+            />
+          </div>
+          {historyEnabled && (
+            <div className="rounded-3xl border border-orange-200 bg-white/90 p-6 shadow-inner">
+              <CompetitionHistory />
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-3xl border-2 border-orange-200 bg-white/95 p-6 shadow-xl">
+          <h2 className="text-3xl font-bold text-orange-700 text-center mb-6">
+            Состязания
+          </h2>
+          <Competitions
+            selectedMonsterId={selectedMonsterId}
+            userId={userId}
+            onCompetitionStart={handleCompetitionStart}
+          />
         </div>
       </VKDesktopFrame>
     );
