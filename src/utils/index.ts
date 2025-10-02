@@ -94,12 +94,14 @@ export async function withInfiniteRetryAndTimeout<T>(
 
 export const getVKParams = (): {
   VK: boolean;
+  VKdesktop: boolean;
   sign: string | null;
   vkUserId: string | null;
 } => {
   if (typeof window === "undefined") {
     return {
       VK: false,
+      VKdesktop: false,
       sign: null,
       vkUserId: null,
     };
@@ -108,9 +110,13 @@ export const getVKParams = (): {
   const search = window.location?.search ?? "";
   const params = new URLSearchParams(search);
 
+  const platform = params.get("vk_platform");
+  const VKdesktop = platform === "desktop_web";
+
   if (!params.has("vk_user_id")) {
     return {
       VK: false,
+      VKdesktop,
       sign: null,
       vkUserId: null,
     };
@@ -120,6 +126,7 @@ export const getVKParams = (): {
 
   return {
     VK,
+    VKdesktop,
     sign: params.get("sign"),
     vkUserId: params.get("vk_user_id"),
   };

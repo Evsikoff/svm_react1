@@ -1,6 +1,7 @@
 // Inventory.tsx — компонент "Инвентарь" с фреймами "Предметы пользователя" и "Предметы монстров"
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import VKDesktopFrame from "./components/VKDesktopFrame";
 
 // Импорт компонента MonsterItems
 const MonsterItems = React.lazy(() => import("./MonsterItems"));
@@ -34,6 +35,7 @@ interface UserItemsResponse {
 
 interface InventoryProps {
   userId: number | null;
+  isVKDesktop?: boolean;
 }
 
 // ===== Функция с бесконечными повторами при таймауте =====
@@ -101,7 +103,10 @@ async function withRetry<T>(
 }
 
 // ===== Основной компонент =====
-const Inventory: React.FC<InventoryProps> = ({ userId }) => {
+const Inventory: React.FC<InventoryProps> = ({
+  userId,
+  isVKDesktop = false,
+}) => {
   const [items, setItems] = useState<UserInventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -245,243 +250,294 @@ const Inventory: React.FC<InventoryProps> = ({ userId }) => {
     }
   };
 
-  // ===== Рендер =====
-  return (
-    <div className="p-6">
-      {/* Спиннер загрузки */}
-      {loading && (
-        <div className="w-full flex items-center justify-center py-16">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+  const isDesktopView = isVKDesktop;
 
-      {!loading && (
-        <div className="max-w-6xl mx-auto">
-          {/* Ошибка */}
-          {error && (
-            <div className="bg-red-100 text-red-700 border border-red-300 px-4 py-3 rounded-lg mb-6">
-              {error}
-            </div>
-          )}
+  const renderContent = () => {
+    const loadingWrapperClass = isDesktopView
+      ? "w-full flex items-center justify-center py-20"
+      : "w-full flex items-center justify-center py-16";
+    const contentWrapperClass = isDesktopView
+      ? "mx-auto max-w-6xl space-y-10"
+      : "max-w-6xl mx-auto";
+    const errorAlertClass = isDesktopView
+      ? "bg-red-100 text-red-700 border border-red-300 px-6 py-4 rounded-3xl shadow mb-6"
+      : "bg-red-100 text-red-700 border border-red-300 px-4 py-3 rounded-lg mb-6";
+    const userItemsFrameClass = isDesktopView
+      ? "bg-gradient-to-br from-purple-50 to-orange-50 rounded-3xl shadow-xl border border-purple-200 p-8"
+      : "bg-gradient-to-br from-purple-50 to-orange-50 rounded-xl shadow-lg border border-purple-200 p-6";
+    const userItemsTitleClass = isDesktopView
+      ? "text-3xl font-bold text-purple-800 mb-6 text-center"
+      : "text-2xl font-bold text-purple-800 mb-6 text-center";
+    const emptyStateWrapperClass = isDesktopView
+      ? "text-center py-16"
+      : "text-center py-12";
+    const emptyEmojiClass = isDesktopView
+      ? "text-purple-400 text-5xl mb-6"
+      : "text-purple-400 text-4xl mb-4";
+    const emptyTitleClass = isDesktopView
+      ? "text-purple-700 text-xl font-semibold mb-2"
+      : "text-purple-700 text-lg font-medium mb-2";
+    const emptyDescriptionClass = "text-purple-600 text-sm";
+    const itemsGridClass = isDesktopView
+      ? "flex flex-wrap justify-center gap-8"
+      : "flex flex-wrap justify-center gap-6";
+    const itemCardBase = isDesktopView
+      ? "border-2 rounded-3xl p-6 shadow-xl transition-all duration-200 w-72 min-h-[320px]"
+      : "border-2 rounded-xl p-4 shadow-md transition-all duration-200 w-64 min-h-[280px]";
+    const itemImageWrapperClass = isDesktopView
+      ? "flex justify-center mb-4"
+      : "flex justify-center mb-3";
+    const itemImageClass = isDesktopView
+      ? "w-20 h-20 object-contain"
+      : "w-16 h-16 object-contain";
+    const itemNameClass = isDesktopView
+      ? "text-base font-bold text-gray-800 text-center mb-2 leading-tight"
+      : "text-sm font-bold text-gray-800 text-center mb-2 leading-tight";
+    const itemDescriptionClass = isDesktopView
+      ? "text-sm text-gray-600 text-center leading-relaxed"
+      : "text-xs text-gray-600 text-center leading-relaxed";
+    const indicatorWrapperClass = isDesktopView
+      ? "flex justify-center mt-4"
+      : "flex justify-center mt-3";
+    const dropdownContainerClass = isDesktopView
+      ? "absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden"
+      : "absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden";
+    const dropdownButtonClass = isDesktopView
+      ? "w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0"
+      : "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0";
+    const dropdownIconClass = isDesktopView
+      ? "w-7 h-7 object-contain flex-shrink-0"
+      : "w-6 h-6 object-contain flex-shrink-0";
+    const dropdownSpinnerClass = isDesktopView
+      ? "w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin flex-shrink-0"
+      : "w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin flex-shrink-0";
+    const actionOverlayClass = isDesktopView
+      ? "absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center rounded-3xl z-60"
+      : "absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center rounded-xl z-60";
+    const actionSpinnerClass = isDesktopView
+      ? "w-9 h-9 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"
+      : "w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin";
+    const monsterFallbackClass = isDesktopView
+      ? "w-full flex items-center justify-center py-20"
+      : "w-full flex items-center justify-center py-16";
+    const modalContainerClass = isDesktopView
+      ? "bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4"
+      : "bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4";
+    const modalTitleClass = isDesktopView
+      ? "text-xl font-semibold mb-4 text-gray-800"
+      : "text-lg font-semibold mb-4 text-gray-800";
+    const modalTextClass = isDesktopView
+      ? "text-gray-700 whitespace-pre-wrap mb-6 text-base"
+      : "text-gray-700 whitespace-pre-wrap mb-6";
+    const modalButtonClass = isDesktopView
+      ? "px-8 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors duration-200"
+      : "px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors duration-200";
 
-          {/* Фрейм "Предметы пользователя" */}
-          <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-xl shadow-lg border border-purple-200 p-6">
-            <h2 className="text-2xl font-bold text-purple-800 mb-6 text-center">
-              Предметы пользователя
-            </h2>
+    return (
+      <>
+        {loading && (
+          <div className={loadingWrapperClass}>
+            <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
 
-            {/* Сообщение об отсутствии предметов */}
-            {!error && items.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-purple-400 text-4xl mb-4">📦</div>
-                <div className="text-purple-700 text-lg font-medium mb-2">
-                  У вас еще нет предметов
+        {!loading && (
+          <div className={contentWrapperClass}>
+            {error && <div className={errorAlertClass}>{error}</div>}
+
+            <div className={userItemsFrameClass}>
+              <h2 className={userItemsTitleClass}>Предметы пользователя</h2>
+
+              {!error && items.length === 0 && (
+                <div className={emptyStateWrapperClass}>
+                  <div className={emptyEmojiClass}>📦</div>
+                  <div className={emptyTitleClass}>У вас еще нет предметов</div>
+                  <div className={emptyDescriptionClass}>
+                    Получайте предметы через взаимодействия с монстрами или
+                    покупайте в магазине
+                  </div>
                 </div>
-                <div className="text-purple-600 text-sm">
-                  Получайте предметы через взаимодействия с монстрами или
-                  покупайте в магазине
-                </div>
-              </div>
-            )}
+              )}
 
-            {/* Сетка предметов с идеальным центрированием */}
-            {items.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-6">
-                {items.map((userItem) => {
-                  const item = userItem.inventoryitem;
-                  const isClickable = item.activity;
-                  const isDropdownOpen = selectedItem === item.inventoryid;
+              {items.length > 0 && (
+                <div className={itemsGridClass}>
+                  {items.map((userItem) => {
+                    const item = userItem.inventoryitem;
+                    const isClickable = item.activity;
+                    const isDropdownOpen = selectedItem === item.inventoryid;
+                    const cardClasses = `${getBadgeStyle(item.inventorytype)} ${itemCardBase} ${
+                      isClickable
+                        ? "cursor-pointer hover:shadow-2xl hover:-translate-y-1 active:scale-95"
+                        : "opacity-60 cursor-not-allowed"
+                    } ${isDropdownOpen ? "ring-2 ring-purple-500" : ""}`;
 
-                  return (
-                    <div key={item.inventoryid} className="relative">
-                      {/* Основной бейдж предмета */}
-                      <div
-                        className={`
-                          ${getBadgeStyle(item.inventorytype)}
-                          border-2 rounded-xl p-4 shadow-md transition-all duration-200 w-64 min-h-[280px]
-                          ${
-                            isClickable
-                              ? "cursor-pointer hover:shadow-lg hover:scale-105 active:scale-95"
-                              : "opacity-60 cursor-not-allowed"
-                          }
-                          ${isDropdownOpen ? "ring-2 ring-purple-500" : ""}
-                        `}
-                        onClick={() => {
-                          if (isClickable && item.itemactions.length > 0) {
-                            setSelectedItem(
-                              isDropdownOpen ? null : item.inventoryid
-                            );
-                          }
-                        }}
-                      >
-                        {/* Количество предметов (бейдж в углу) */}
-                        {parseInt(item.quantity) > 1 && (
-                          <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-sm font-bold px-2 py-1 rounded-full shadow-md border-2 border-white">
-                            {item.quantity}
-                          </div>
-                        )}
-
-                        {/* Изображение предмета */}
-                        <div className="flex justify-center mb-3">
-                          <img
-                            src={item.inventoryimage}
-                            alt={item.inventoryname}
-                            className="w-16 h-16 object-contain"
-                            onError={(e) => {
-                              console.error(
-                                `Ошибка загрузки изображения: ${item.inventoryimage}`
+                    return (
+                      <div key={item.inventoryid} className="relative">
+                        <div
+                          className={cardClasses}
+                          onClick={() => {
+                            if (isClickable && item.itemactions.length > 0) {
+                              setSelectedItem(
+                                isDropdownOpen ? null : item.inventoryid
                               );
-                              e.currentTarget.src = "/placeholder-item.png";
-                            }}
-                          />
+                            }
+                          }}
+                        >
+                          {parseInt(item.quantity) > 1 && (
+                            <div className="absolute -top-2 -right-2 bg-orange-500 text-white text-sm font-bold px-2 py-1 rounded-full shadow-md border-2 border-white">
+                              {item.quantity}
+                            </div>
+                          )}
+
+                          <div className={itemImageWrapperClass}>
+                            <img
+                              src={item.inventoryimage}
+                              alt={item.inventoryname}
+                              className={itemImageClass}
+                              onError={(e) => {
+                                console.error(
+                                  `Ошибка загрузки изображения: ${item.inventoryimage}`
+                                );
+                                e.currentTarget.src = "/placeholder-item.png";
+                              }}
+                            />
+                          </div>
+
+                          <h3 className={itemNameClass}>{item.inventoryname}</h3>
+
+                          <p className={itemDescriptionClass}>
+                            {item.inventorydescription}
+                          </p>
+
+                          {isClickable && item.itemactions.length > 0 && (
+                            <div className={indicatorWrapperClass}>
+                              <div className="flex space-x-1">
+                                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
+                                <div
+                                  className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"
+                                  style={{ animationDelay: "0.2s" }}
+                                ></div>
+                                <div
+                                  className="w-1.5 h-1.5 bg-purple-300 rounded-full animate-pulse"
+                                  style={{ animationDelay: "0.4s" }}
+                                ></div>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Название предмета */}
-                        <h3 className="text-sm font-bold text-gray-800 text-center mb-2 leading-tight">
-                          {item.inventoryname}
-                        </h3>
+                        {isDropdownOpen && item.itemactions.length > 0 && (
+                          <>
+                            <div
+                              className="fixed inset-0 bg-black bg-opacity-25 z-40"
+                              onClick={() => setSelectedItem(null)}
+                            />
 
-                        {/* Описание предмета */}
-                        <p className="text-xs text-gray-600 text-center leading-relaxed">
-                          {item.inventorydescription}
-                        </p>
-
-                        {/* Индикатор доступности действий */}
-                        {isClickable && item.itemactions.length > 0 && (
-                          <div className="flex justify-center mt-3">
-                            <div className="flex space-x-1">
-                              <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
-                              <div
-                                className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"
-                                style={{ animationDelay: "0.2s" }}
-                              ></div>
-                              <div
-                                className="w-1.5 h-1.5 bg-purple-300 rounded-full animate-pulse"
-                                style={{ animationDelay: "0.4s" }}
-                              ></div>
+                            <div className={dropdownContainerClass}>
+                              {item.itemactions.map((action, index) => (
+                                <button
+                                  key={index}
+                                  className={`${dropdownButtonClass} ${
+                                    actionLoading === action.actionname
+                                      ? "bg-gray-50 cursor-not-allowed"
+                                      : ""
+                                  }`}
+                                  onClick={() => handleItemAction(action)}
+                                  disabled={actionLoading === action.actionname}
+                                >
+                                  <img
+                                    src={action.actionicon}
+                                    alt=""
+                                    className={dropdownIconClass}
+                                  />
+                                  <span className="text-sm text-gray-700 flex-grow">
+                                    {action.actionname}
+                                  </span>
+                                  {actionLoading === action.actionname && (
+                                    <div className={dropdownSpinnerClass} />
+                                  )}
+                                </button>
+                              ))}
                             </div>
-                          </div>
+                          </>
                         )}
-                      </div>
 
-                      {/* Выпадающий список действий */}
-                      {isDropdownOpen && item.itemactions.length > 0 && (
-                        <>
-                          {/* Затемнение фона */}
-                          <div
-                            className="fixed inset-0 bg-black bg-opacity-25 z-40"
-                            onClick={() => setSelectedItem(null)}
-                          />
-
-                          {/* Выпадающий список */}
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
-                            {item.itemactions.map((action, index) => (
-                              <button
-                                key={index}
-                                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0 ${
-                                  actionLoading === action.actionname
-                                    ? "bg-gray-50 cursor-not-allowed"
-                                    : ""
-                                }`}
-                                onClick={() => handleItemAction(action)}
-                                disabled={actionLoading === action.actionname}
-                              >
-                                {/* Иконка действия */}
-                                <img
-                                  src={action.actionicon}
-                                  alt=""
-                                  className="w-6 h-6 object-contain flex-shrink-0"
-                                />
-
-                                {/* Текст действия */}
-                                <span className="text-sm text-gray-700 flex-grow">
-                                  {action.actionname}
+                        {actionLoading &&
+                          item.itemactions.some(
+                            (action) => action.actionname === actionLoading
+                          ) && (
+                            <div className={actionOverlayClass}>
+                              <div className="flex flex-col items-center gap-2">
+                                <div className={actionSpinnerClass} />
+                                <span className="text-sm text-purple-600 font-medium">
+                                  Выполняется...
                                 </span>
-
-                                {/* Спиннер для загружающегося действия */}
-                                {actionLoading === action.actionname && (
-                                  <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {/* Глобальный спиннер поверх карточки при выполнении действия */}
-                      {actionLoading &&
-                        item.itemactions.some(
-                          (action) => action.actionname === actionLoading
-                        ) && (
-                          <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center rounded-xl z-60">
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                              <span className="text-sm text-purple-600 font-medium">
-                                Выполняется...
-                              </span>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                          )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <React.Suspense
+              fallback={
+                <div className={monsterFallbackClass}>
+                  <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              }
+            >
+              <MonsterItems
+                userId={userId}
+                onRefreshAllFrames={refreshAllFrames}
+              />
+            </React.Suspense>
           </div>
+        )}
 
-          {/* Фрейм "Предметы монстров" */}
-          <React.Suspense
-            fallback={
-              <div className="w-full flex items-center justify-center py-16">
-                <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-              </div>
-            }
-          >
-            <MonsterItems
-              userId={userId}
-              onRefreshAllFrames={refreshAllFrames}
-            />
-          </React.Suspense>
-        </div>
-      )}
-
-      {/* Модальное окно с сообщением о результате действия */}
-      {showModal && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
-          onClick={() => {
-            setShowModal(false);
-            // Обновляем все фреймы при закрытии по клику вне модального окна
-            refreshAllFrames();
-          }}
-        >
+        {showModal && (
           <div
-            className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+            onClick={() => {
+              setShowModal(false);
+              refreshAllFrames();
+            }}
           >
-            <div className="text-lg font-semibold mb-4 text-gray-800">
-              Результат
-            </div>
-            <div className="text-gray-700 whitespace-pre-wrap mb-6">
-              {actionMessage}
-            </div>
-            <div className="flex justify-end">
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  // Обновляем все фреймы после закрытия модального окна
-                  refreshAllFrames();
-                }}
-                className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors duration-200"
-              >
-                OK
-              </button>
+            <div
+              className={modalContainerClass}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={modalTitleClass}>Результат</div>
+              <div className={modalTextClass}>{actionMessage}</div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    refreshAllFrames();
+                  }}
+                  className={modalButtonClass}
+                >
+                  OK
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        )}
+      </>
+    );
+  };
+
+  if (isDesktopView) {
+    return (
+      <VKDesktopFrame title="Инвентарь" accent="emerald">
+        {renderContent()}
+      </VKDesktopFrame>
+    );
+  }
+
+  return <div className="p-6">{renderContent()}</div>;
 };
 
 export default Inventory;
