@@ -29,13 +29,27 @@ interface CompetitionsProps {
   selectedMonsterId: number | null;
   userId: number | null;
   onCompetitionStart?: (id: number) => void;
+  isVKDesktop?: boolean;
 }
 
 const Competitions: React.FC<CompetitionsProps> = ({
   selectedMonsterId,
   userId,
   onCompetitionStart,
+  isVKDesktop = false,
 }) => {
+  const largeBadgePaddingY = isVKDesktop ? "0.35rem" : undefined;
+  const smallBadgePaddingY = isVKDesktop ? "0.175rem" : undefined;
+  const energyIconSize = isVKDesktop
+    ? { width: "1.05rem", height: "1.225rem" }
+    : undefined;
+  const participantsIconSize = isVKDesktop
+    ? { width: "1.4rem", height: "0.875rem" }
+    : undefined;
+  const characteristicIconSize = isVKDesktop
+    ? { width: "0.875rem", height: "0.875rem" }
+    : undefined;
+
   const [competitions, setCompetitions] = useState<MonsterCompetition[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -176,12 +190,21 @@ const Competitions: React.FC<CompetitionsProps> = ({
             {/* Стоимость энергии и количество участников */}
             <div className="flex justify-center items-center gap-6">
               {/* Стоимость энергии */}
-              <div className="flex items-center gap-2 bg-blue-100 rounded-lg px-3 py-2">
+              <div
+                className="flex items-center gap-2 bg-blue-100 rounded-lg px-3 py-2"
+                style={{
+                  paddingTop: largeBadgePaddingY,
+                  paddingBottom: largeBadgePaddingY,
+                }}
+              >
                 <img
                   src="https://storage.yandexcloud.net/svm/img/usercompetitionenergy.png"
                   alt="Энергия"
                   className="w-6 h-7"
-                  style={{ aspectRatio: "9/10" }}
+                  style={{
+                    aspectRatio: "9/10",
+                    ...energyIconSize,
+                  }}
                 />
                 <span className="font-semibold text-blue-800">
                   {competition.monstercompetitionenergyprice}
@@ -189,12 +212,21 @@ const Competitions: React.FC<CompetitionsProps> = ({
               </div>
 
               {/* Количество участников */}
-              <div className="flex items-center gap-2 bg-purple-100 rounded-lg px-3 py-2">
+              <div
+                className="flex items-center gap-2 bg-purple-100 rounded-lg px-3 py-2"
+                style={{
+                  paddingTop: largeBadgePaddingY,
+                  paddingBottom: largeBadgePaddingY,
+                }}
+              >
                 <img
                   src="https://storage.yandexcloud.net/svm/img/participants.png"
                   alt="Участники"
                   className="w-8 h-5"
-                  style={{ aspectRatio: "50/31" }}
+                  style={{
+                    aspectRatio: "50/31",
+                    ...participantsIconSize,
+                  }}
                 />
                 <span className="font-semibold text-purple-800">
                   {competition.monstercompetitionparticipantsnumber}
@@ -217,11 +249,16 @@ const Competitions: React.FC<CompetitionsProps> = ({
                         ? char.monstercompetitioncharacteristicname
                         : undefined
                     }
+                    style={{
+                      paddingTop: smallBadgePaddingY,
+                      paddingBottom: smallBadgePaddingY,
+                    }}
                   >
                     <img
                       src={char.monstercompetitioncharacteristicimage}
                       alt={char.monstercompetitioncharacteristicname}
                       className="w-5 h-5"
+                      style={characteristicIconSize}
                     />
                     <span className="text-sm font-medium text-gray-800">
                       {char.monstercompetitioncharacteristicamount}

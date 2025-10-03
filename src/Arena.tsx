@@ -98,6 +98,7 @@ const Arena: React.FC<ArenaProps> = ({
             selectedMonsterId={selectedMonsterId}
             userId={userId}
             onCompetitionStart={handleCompetitionStart}
+            isVKDesktop={isVKDesktop}
           />
         </div>
       </VKDesktopFrame>
@@ -149,6 +150,7 @@ const Arena: React.FC<ArenaProps> = ({
             selectedMonsterId={selectedMonsterId}
             userId={userId}
             onCompetitionStart={handleCompetitionStart}
+            isVKDesktop={isVKDesktop}
           />
         </div>
       </div>
