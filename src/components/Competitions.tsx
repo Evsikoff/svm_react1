@@ -1,4 +1,4 @@
-// src/components/Competitions.tsx - компонент "Состязания"
+// src/components/Competitions.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import WaitingForOpponentsModal from "./WaitingForOpponentsModal";
@@ -38,26 +38,38 @@ const Competitions: React.FC<CompetitionsProps> = ({
   onCompetitionStart,
   isVKDesktop = false,
 }) => {
-  const largeBadgePaddingY = isVKDesktop ? "0.35rem" : undefined;
-  const smallBadgePaddingY = isVKDesktop ? "0.175rem" : undefined;
+  // Размеры для VKDesktop режима (уменьшены еще больше)
+  const largeBadgePaddingY = isVKDesktop ? "0.25rem" : undefined;
+  const smallBadgePaddingY = isVKDesktop ? "0.125rem" : undefined;
+  const largeBadgePaddingX = isVKDesktop ? "0.5rem" : undefined;
+  const smallBadgePaddingX = isVKDesktop ? "0.375rem" : undefined;
+
   const energyIconSize = isVKDesktop
-    ? { width: "1.05rem", height: "1.225rem" }
+    ? { width: "0.875rem", height: "1rem" }
     : undefined;
   const participantsIconSize = isVKDesktop
-    ? { width: "1.4rem", height: "0.875rem" }
+    ? { width: "1.125rem", height: "0.7rem" }
     : undefined;
   const characteristicIconSize = isVKDesktop
-    ? { width: "0.875rem", height: "0.875rem" }
+    ? { width: "0.75rem", height: "0.75rem" }
     : undefined;
+
+  // Размеры текста для VKDesktop
+  const largeBadgeTextSize = isVKDesktop ? "text-xs" : "text-base";
+  const smallBadgeTextSize = isVKDesktop ? "text-[10px]" : "text-sm";
+  const titleTextSize = isVKDesktop
+    ? "text-xl md:text-2xl"
+    : "text-2xl md:text-3xl";
+  const gapSize = isVKDesktop ? "gap-3" : "gap-6";
+  const smallGapSize = isVKDesktop ? "gap-1" : "gap-2";
 
   const [competitions, setCompetitions] = useState<MonsterCompetition[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
-  const [selectedCompetitionId, setSelectedCompetitionId] = useState<string | null>(
-    null
-  );
+  const [selectedCompetitionId, setSelectedCompetitionId] = useState<
+    string | null
+  >(null);
 
-  // Функция загрузки состязаний
   const loadCompetitions = async (monsterId: number) => {
     setLoading(true);
     setError("");
@@ -91,14 +103,12 @@ const Competitions: React.FC<CompetitionsProps> = ({
     }
   };
 
-  // Загрузка при изменении выбранного монстра
   useEffect(() => {
     if (selectedMonsterId) {
       loadCompetitions(selectedMonsterId);
     }
   }, [selectedMonsterId]);
 
-  // Обработчик клика по активному состязанию
   const handleCompetitionClick = (competition: MonsterCompetition) => {
     if (competition.activity) {
       setSelectedCompetitionId(competition.monstercompetitionid);
@@ -163,7 +173,11 @@ const Competitions: React.FC<CompetitionsProps> = ({
           title={!competition.activity ? competition.inactivity : undefined}
         >
           {/* Изображение состязания */}
-          <div className="relative h-48 md:h-64 overflow-hidden">
+          <div
+            className={`relative ${
+              isVKDesktop ? "h-40 md:h-48" : "h-48 md:h-64"
+            } overflow-hidden`}
+          >
             <img
               src={competition.monstercompetitionimage}
               alt={competition.monstercompetitionname}
@@ -179,71 +193,83 @@ const Competitions: React.FC<CompetitionsProps> = ({
 
             {/* Наименование состязания поверх изображения */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-              <h3 className="text-white text-2xl md:text-3xl font-bold text-center drop-shadow-lg">
+              <h3
+                className={`text-white ${titleTextSize} font-bold text-center drop-shadow-lg`}
+              >
                 {competition.monstercompetitionname}
               </h3>
             </div>
           </div>
 
           {/* Информационная панель */}
-          <div className="p-4 space-y-4">
+          <div className={`p-4 space-y-${isVKDesktop ? "3" : "4"}`}>
             {/* Стоимость энергии и количество участников */}
-            <div className="flex justify-center items-center gap-6">
+            <div className={`flex justify-center items-center ${gapSize}`}>
               {/* Стоимость энергии */}
               <div
-                className="flex items-center gap-2 bg-blue-100 rounded-lg px-3 py-2"
+                className={`flex items-center ${smallGapSize} bg-blue-100 rounded-lg`}
                 style={{
                   paddingTop: largeBadgePaddingY,
                   paddingBottom: largeBadgePaddingY,
+                  paddingLeft: largeBadgePaddingX,
+                  paddingRight: largeBadgePaddingX,
                 }}
               >
                 <img
                   src="https://storage.yandexcloud.net/svm/img/usercompetitionenergy.png"
                   alt="Энергия"
-                  className="w-6 h-7"
+                  className={isVKDesktop ? "w-4 h-[18px]" : "w-6 h-7"}
                   style={{
                     aspectRatio: "9/10",
                     ...energyIconSize,
                   }}
                 />
-                <span className="font-semibold text-blue-800">
+                <span
+                  className={`font-semibold text-blue-800 ${largeBadgeTextSize}`}
+                >
                   {competition.monstercompetitionenergyprice}
                 </span>
               </div>
 
               {/* Количество участников */}
               <div
-                className="flex items-center gap-2 bg-purple-100 rounded-lg px-3 py-2"
+                className={`flex items-center ${smallGapSize} bg-purple-100 rounded-lg`}
                 style={{
                   paddingTop: largeBadgePaddingY,
                   paddingBottom: largeBadgePaddingY,
+                  paddingLeft: largeBadgePaddingX,
+                  paddingRight: largeBadgePaddingX,
                 }}
               >
                 <img
                   src="https://storage.yandexcloud.net/svm/img/participants.png"
                   alt="Участники"
-                  className="w-8 h-5"
+                  className={isVKDesktop ? "w-[18px] h-[11px]" : "w-8 h-5"}
                   style={{
                     aspectRatio: "50/31",
                     ...participantsIconSize,
                   }}
                 />
-                <span className="font-semibold text-purple-800">
+                <span
+                  className={`font-semibold text-purple-800 ${largeBadgeTextSize}`}
+                >
                   {competition.monstercompetitionparticipantsnumber}
                 </span>
               </div>
             </div>
 
             {/* Требования к характеристикам */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-700 text-center">
+            <div className={`space-y-${isVKDesktop ? "1.5" : "2"}`}>
+              <h4
+                className={`${smallBadgeTextSize} font-medium text-gray-700 text-center`}
+              >
                 Требования к характеристикам:
               </h4>
-              <div className="flex flex-wrap justify-center gap-2">
+              <div className={`flex flex-wrap justify-center ${smallGapSize}`}>
                 {competition.monstercompetitioncharacteristics.map((char) => (
                   <div
                     key={char.monstercompetitioncharacteristicid}
-                    className="flex items-center gap-1 bg-white rounded-lg px-2 py-1 border border-gray-200 shadow-sm"
+                    className={`flex items-center gap-1 bg-white rounded-lg border border-gray-200 shadow-sm`}
                     title={
                       competition.activity
                         ? char.monstercompetitioncharacteristicname
@@ -252,15 +278,19 @@ const Competitions: React.FC<CompetitionsProps> = ({
                     style={{
                       paddingTop: smallBadgePaddingY,
                       paddingBottom: smallBadgePaddingY,
+                      paddingLeft: smallBadgePaddingX,
+                      paddingRight: smallBadgePaddingX,
                     }}
                   >
                     <img
                       src={char.monstercompetitioncharacteristicimage}
                       alt={char.monstercompetitioncharacteristicname}
-                      className="w-5 h-5"
+                      className={isVKDesktop ? "w-3 h-3" : "w-5 h-5"}
                       style={characteristicIconSize}
                     />
-                    <span className="text-sm font-medium text-gray-800">
+                    <span
+                      className={`${smallBadgeTextSize} font-medium text-gray-800`}
+                    >
                       {char.monstercompetitioncharacteristicamount}
                     </span>
                   </div>
@@ -271,13 +301,29 @@ const Competitions: React.FC<CompetitionsProps> = ({
             {/* Индикатор активности */}
             {competition.activity ? (
               <div className="flex justify-center">
-                <div className="bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium">
+                <div
+                  className={`bg-green-100 text-green-800 rounded-full ${smallBadgeTextSize} font-medium`}
+                  style={{
+                    paddingTop: smallBadgePaddingY,
+                    paddingBottom: smallBadgePaddingY,
+                    paddingLeft: largeBadgePaddingX,
+                    paddingRight: largeBadgePaddingX,
+                  }}
+                >
                   ✓ Доступно
                 </div>
               </div>
             ) : (
               <div className="flex justify-center">
-                <div className="bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-sm font-medium">
+                <div
+                  className={`bg-gray-100 text-gray-600 rounded-full ${smallBadgeTextSize} font-medium`}
+                  style={{
+                    paddingTop: smallBadgePaddingY,
+                    paddingBottom: smallBadgePaddingY,
+                    paddingLeft: largeBadgePaddingX,
+                    paddingRight: largeBadgePaddingX,
+                  }}
+                >
                   Требования не выполнены
                 </div>
               </div>
