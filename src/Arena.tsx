@@ -1,4 +1,4 @@
-// src/Arena.tsx - обновленный компонент "Арена" с состязаниями
+// src/Arena.tsx - обновленная версия с уменьшенными отступами
 import React, { useState, useEffect } from "react";
 import CompetitionEnergy from "./components/CompetitionEnergy";
 import ArenaMonsterSwitcher from "./components/ArenaMonsterSwitcher";
@@ -25,7 +25,6 @@ const Arena: React.FC<ArenaProps> = ({
     useState<number | null>(null);
   const [historyEnabled, setHistoryEnabled] = useState(false);
 
-  // Обработчик смены монстра из ArenaMonsterSwitcher
   const handleMonsterChange = (monsterId: number) => {
     setSelectedMonsterId(monsterId);
   };
@@ -65,18 +64,18 @@ const Arena: React.FC<ArenaProps> = ({
   if (isVKDesktop) {
     return (
       <VKDesktopFrame
-        contentClassName="flex flex-col space-y-8"
+        contentClassName="flex flex-col space-y-4"
         accent="purple"
       >
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-blue-200 bg-white/90 p-6 shadow-inner">
+        <div className="space-y-3">
+          <div className="rounded-3xl border border-blue-200 bg-white/90 p-4 shadow-inner">
             <CompetitionEnergy
               userId={userId}
               isVK={isVK}
               isVKDesktop={isVKDesktop}
             />
           </div>
-          <div className="rounded-3xl border border-emerald-200 bg-white/90 p-6 shadow-inner">
+          <div className="rounded-3xl border border-emerald-200 bg-white/90 p-4 shadow-inner">
             <ArenaMonsterSwitcher
               userId={userId}
               selectedMonsterId={selectedMonsterId}
@@ -84,14 +83,14 @@ const Arena: React.FC<ArenaProps> = ({
             />
           </div>
           {historyEnabled && (
-            <div className="rounded-3xl border border-orange-200 bg-white/90 p-6 shadow-inner">
+            <div className="rounded-3xl border border-orange-200 bg-white/90 p-4 shadow-inner">
               <CompetitionHistory />
             </div>
           )}
         </div>
 
-        <div className="rounded-3xl border-2 border-orange-200 bg-white/95 p-6 shadow-xl">
-          <h2 className="text-3xl font-bold text-orange-700 text-center mb-6">
+        <div className="rounded-3xl border-2 border-orange-200 bg-white/95 p-4 shadow-xl">
+          <h2 className="text-2xl font-bold text-orange-700 text-center mb-4">
             Состязания
           </h2>
           <Competitions
@@ -107,9 +106,7 @@ const Arena: React.FC<ArenaProps> = ({
 
   return (
     <div className="p-4 md:p-8 space-y-6">
-      {/* Блок с энергией и переключателем монстров */}
       <div className="flex flex-col gap-4">
-        {/* На широких экранах: энергия и переключатель в одной строке */}
         <div className="hidden md:flex md:items-start md:justify-between md:gap-6">
           <div className="flex-shrink-0">
             <CompetitionEnergy userId={userId} isVK={isVK} />
@@ -123,7 +120,6 @@ const Arena: React.FC<ArenaProps> = ({
           </div>
         </div>
 
-        {/* На узких экранах: энергия сверху, переключатель снизу */}
         <div className="md:hidden space-y-4">
           <CompetitionEnergy userId={userId} isVK={isVK} />
           <ArenaMonsterSwitcher
@@ -140,7 +136,6 @@ const Arena: React.FC<ArenaProps> = ({
         </div>
       )}
 
-      {/* Компонент "Состязания" */}
       <div className="mt-6">
         <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border-2 border-orange-200 shadow-lg p-6">
           <h2 className="text-2xl md:text-3xl font-bold text-orange-800 mb-6 text-center">

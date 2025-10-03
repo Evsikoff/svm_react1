@@ -38,7 +38,7 @@ const Competitions: React.FC<CompetitionsProps> = ({
   onCompetitionStart,
   isVKDesktop = false,
 }) => {
-  // Размеры для VKDesktop режима (уменьшены еще больше)
+  // Размеры для VKDesktop режима
   const largeBadgePaddingY = isVKDesktop ? "0.25rem" : undefined;
   const smallBadgePaddingY = isVKDesktop ? "0.125rem" : undefined;
   const largeBadgePaddingX = isVKDesktop ? "0.5rem" : undefined;
@@ -58,10 +58,15 @@ const Competitions: React.FC<CompetitionsProps> = ({
   const largeBadgeTextSize = isVKDesktop ? "text-xs" : "text-base";
   const smallBadgeTextSize = isVKDesktop ? "text-[10px]" : "text-sm";
   const titleTextSize = isVKDesktop
-    ? "text-xl md:text-2xl"
+    ? "text-lg md:text-xl"
     : "text-2xl md:text-3xl";
   const gapSize = isVKDesktop ? "gap-3" : "gap-6";
   const smallGapSize = isVKDesktop ? "gap-1" : "gap-2";
+
+  // Отступы для карточек
+  const cardSpacing = isVKDesktop ? "space-y-3" : "space-y-6";
+  const cardPadding = isVKDesktop ? "p-3" : "p-4";
+  const innerSpacing = isVKDesktop ? "space-y-2" : "space-y-4";
 
   const [competitions, setCompetitions] = useState<MonsterCompetition[]>([]);
   const [loading, setLoading] = useState(false);
@@ -157,7 +162,7 @@ const Competitions: React.FC<CompetitionsProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className={cardSpacing}>
       {competitions.map((competition) => (
         <div
           key={competition.monstercompetitionid}
@@ -175,7 +180,7 @@ const Competitions: React.FC<CompetitionsProps> = ({
           {/* Изображение состязания */}
           <div
             className={`relative ${
-              isVKDesktop ? "h-40 md:h-48" : "h-48 md:h-64"
+              isVKDesktop ? "h-32" : "h-48 md:h-64"
             } overflow-hidden`}
           >
             <img
@@ -192,7 +197,11 @@ const Competitions: React.FC<CompetitionsProps> = ({
             />
 
             {/* Наименование состязания поверх изображения */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+            <div
+              className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent ${
+                isVKDesktop ? "p-2" : "p-4"
+              }`}
+            >
               <h3
                 className={`text-white ${titleTextSize} font-bold text-center drop-shadow-lg`}
               >
@@ -202,7 +211,7 @@ const Competitions: React.FC<CompetitionsProps> = ({
           </div>
 
           {/* Информационная панель */}
-          <div className={`p-4 space-y-${isVKDesktop ? "3" : "4"}`}>
+          <div className={`${cardPadding} ${innerSpacing}`}>
             {/* Стоимость энергии и количество участников */}
             <div className={`flex justify-center items-center ${gapSize}`}>
               {/* Стоимость энергии */}
@@ -259,7 +268,7 @@ const Competitions: React.FC<CompetitionsProps> = ({
             </div>
 
             {/* Требования к характеристикам */}
-            <div className={`space-y-${isVKDesktop ? "1.5" : "2"}`}>
+            <div className={isVKDesktop ? "space-y-1" : "space-y-2"}>
               <h4
                 className={`${smallBadgeTextSize} font-medium text-gray-700 text-center`}
               >
