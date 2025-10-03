@@ -415,11 +415,7 @@ const Shop: React.FC<Props> = ({
   };
 
   if (isDesktopView) {
-    return (
-      <VKDesktopFrame title="Магазин" accent="amber">
-        {renderContent()}
-      </VKDesktopFrame>
-    );
+    return <VKDesktopFrame accent="amber">{renderContent()}</VKDesktopFrame>;
   }
 
   return <div className="p-6">{renderContent()}</div>;
