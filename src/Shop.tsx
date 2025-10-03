@@ -298,7 +298,9 @@ const Shop: React.FC<Props> = ({
             </div>
 
             <section aria-label="Магазин" className={isDesktopView ? "mt-8" : "mt-6"}>
-              <h2 className={sectionTitleClass}>Магазин</h2>
+              {!isDesktopView && (
+                <h2 className={sectionTitleClass}>Магазин</h2>
+              )}
 
               {shopLoading && (
                 <div className={shopSpinnerClass}>
@@ -413,11 +415,7 @@ const Shop: React.FC<Props> = ({
   };
 
   if (isDesktopView) {
-    return (
-      <VKDesktopFrame title="Магазин" accent="amber">
-        {renderContent()}
-      </VKDesktopFrame>
-    );
+    return <VKDesktopFrame accent="amber">{renderContent()}</VKDesktopFrame>;
   }
 
   return <div className="p-6">{renderContent()}</div>;
